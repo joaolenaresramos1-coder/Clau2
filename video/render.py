@@ -15,7 +15,7 @@ import cairo
 from gfx import W, H, FPS
 import math
 from gfx import ease, clamp
-from scenes3 import SCENES, CUTS
+from scenes4 import SCENES, CUTS
 from overlays import draw_inserts
 
 OW, OH = 1920, 1080
@@ -117,7 +117,7 @@ def full(nproc=4):
     with open(lst, "w") as f:
         for i in range(nproc):
             f.write(f"file 'part{i}.mp4'\n")
-    final = os.path.join(OUT, "agua_viva_caixa_v3.mp4")
+    final = os.path.join(OUT, "agua_viva_caixa_v4.mp4")
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-i", MIX if os.path.exists(MIX) else AUDIO,
                     "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-shortest",
                     "-movflags", "+faststart", final], check=True)

@@ -29,7 +29,7 @@ OUTFITS = {
                    hood=None, mask=False, tank=None, band=None, shorts=(0.20, 0.24, 0.30), hand=SKIN),
     "lifeguard": dict(top=(0.88, 0.22, 0.20), arm=SKIN, leg=SKIN, foot=SKIN, feet="bare", hair=(0.55, 0.40, 0.22),
                       hood=None, mask=False, tank=None, band=None, shorts=(0.95, 0.80, 0.22), hand=SKIN),
-    "stockings": dict(top=(0.88, 0.22, 0.20), arm=SKIN, leg=(0.84, 0.66, 0.52), foot=(0.84, 0.66, 0.52), feet="bare",
+    "stockings": dict(top=(0.88, 0.22, 0.20), arm=SKIN, leg=(0.55, 0.40, 0.33), foot=(0.55, 0.40, 0.33), feet="bare",
                       hair=(0.55, 0.40, 0.22), hood=None, mask=False, tank=None, band=None,
                       shorts=(0.95, 0.80, 0.22), hand=SKIN),
     "lycra": dict(top=(0.12, 0.20, 0.44), arm=(0.12, 0.20, 0.44), leg=(0.12, 0.20, 0.44), foot=SKIN, feet="bare",
@@ -452,3 +452,28 @@ def hand_point(x, y, s, p, facing=1, ground=True, side="F"):
     oy = -lowest if ground else 0.0
     hx, hy = _rot(J["arms"][side][2], rot)
     return x + hx * s * facing, y + (hy + oy) * s
+
+
+def world_points(x, y, s, p, facing=1, ground=True):
+    """Coordenadas na tela de todas as articulações (para encostar objetos no corpo: tentáculos, mãos, marcas)."""
+    J = _joints(p)
+    rot = p.get("rot", 0.0)
+    pts = [J["hip"], J["shoulder"], J["neck"], J["head"]]
+    for side in ("F", "B"):
+        pts += list(J["legs"][side]) + list(J["arms"][side])
+    lowest = max(_rot(q, rot)[1] for q in pts) + (HEAD_R if abs(rot) > 45 else 2)
+    if abs(rot) > 45:
+        lowest = max(lowest, max(_rot(q, rot)[1] for q in pts) + 7)
+    oy = -lowest if ground else 0.0
+
+    def tr(q):
+        rx, ry = _rot(q, rot)
+        return (x + rx * s * facing, y + (ry + oy) * s)
+
+    out = dict(hip=tr(J["hip"]), shoulder=tr(J["shoulder"]), head=tr(J["head"]))
+    for side in ("F", "B"):
+        k, a, toe = J["legs"][side]
+        out["knee" + side], out["ankle" + side], out["toe" + side] = tr(k), tr(a), tr(toe)
+        e, w, h = J["arms"][side]
+        out["elbow" + side], out["wrist" + side], out["hand" + side] = tr(e), tr(w), tr(h)
+    return out

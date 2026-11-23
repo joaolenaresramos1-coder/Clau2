@@ -7,7 +7,7 @@ import subprocess
 import numpy as np
 from scipy.signal import butter, sosfilt
 
-from scenes import SCENES, CUTS
+from scenes3 import SCENES, CUTS
 
 SR = 48000
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -89,51 +89,94 @@ def section(t):
     return "end"
 
 
-# Progressões (graus em Lá menor)
+# Mi bemol menor: i – VI – III – VII  (Ebm, Cb, Gb, Db) e variações por clima
 PROG = {
-    "suspense": [[45, 52, 57, 60], [44, 52, 56, 59]],          # Am, E/G#
-    "doc": [[45, 52, 57, 60, 64], [41, 48, 57, 60, 65], [48, 55, 60, 64, 67], [43, 50, 59, 62, 67]],  # Am F C G
-    "tension": [[45, 52, 57, 60], [46, 53, 58, 62], [45, 52, 57, 60], [44, 52, 56, 59]],
-    "calm": [[41, 48, 57, 60, 65], [48, 55, 60, 64, 67], [45, 52, 57, 60, 64], [43, 50, 59, 62, 67]],
-    "end": [[41, 48, 57, 60, 69], [43, 50, 59, 62, 67], [45, 52, 57, 60, 64], [48, 55, 64, 67, 72]],
+    "suspense": [[39, 46, 51, 54], [38, 46, 50, 53]],
+    "doc": [[39, 46, 51, 54, 58], [35, 42, 51, 54, 59], [42, 49, 54, 58, 61], [37, 44, 53, 56, 61]],
+    "tension": [[39, 46, 51, 54], [40, 47, 52, 55], [39, 46, 51, 54], [38, 45, 50, 54]],
+    "calm": [[35, 42, 51, 54, 59], [42, 49, 54, 58, 61], [39, 46, 51, 54, 58], [37, 44, 53, 56, 61]],
+    "end": [[35, 42, 51, 54, 59], [37, 44, 53, 56, 61], [39, 46, 51, 54, 58], [42, 49, 58, 61, 66]],
 }
 
 
+def felt_piano(freq, length=5.0, vel=1.0):
+    """Piano abafado: harmônicos levemente inarmônicos, decaimento por harmônico, martelo suave."""
+    n = int(length * SR)
+    t = np.arange(n) / SR
+    s = np.zeros(n)
+    B = 0.0004
+    for k in range(1, 9):
+        fk = k * freq * np.sqrt(1 + B * k * k)
+        if fk > 6000:
+            break
+        amp = (1.0 / k ** 1.6) * (0.6 + 0.4 * vel)
+        s += amp * np.sin(2 * np.pi * fk * t + rng.uniform(0, 6.28)) * np.exp(-t * (0.5 + 0.45 * k))
+    hammer = lp(rng.standard_normal(n), 900) * np.exp(-t * 60) * 0.05
+    s = (s + hammer) * env_adsr(n, 0.006, 0.4)
+    return lp(s, 2600) * vel
+
+
+def warm_pad(freq, length, bright=0.3):
+    n = int(length * SR)
+    t = np.arange(n) / SR
+    s = np.zeros(n)
+    for det in (-0.08, 0.0, 0.07):
+        f = freq * 2 ** (det / 12)
+        ph = rng.uniform(0, 6.28)
+        for k in range(1, 7):
+            s += (1.0 / k ** (2.2 - bright)) * np.sin(2 * np.pi * f * k * t + ph * k)
+    s *= env_adsr(n, min(3.5, length / 3), min(3.5, length / 3))
+    # leve movimento de volume (respiração)
+    s *= 0.85 + 0.15 * np.sin(2 * np.pi * t / 9.0)
+    return lp(s / 3, 1400)
+
+
 def music(D):
-    buf = np.zeros((int(D * SR) + SR, 2))
+    buf = np.zeros((int(D * SR) + 8 * SR, 2))
     bar = 8.0
     t = 0.0
     k = 0
     while t < D:
         sec = section(t)
         chord = PROG[sec][k % len(PROG[sec])]
-        bright = {"suspense": 0.1, "doc": 0.35, "tension": 0.25, "calm": 0.4, "end": 0.5}[sec]
-        g = {"suspense": 0.5, "doc": 0.55, "tension": 0.5, "calm": 0.6, "end": 0.7}[sec]
-        for j, n in enumerate(chord):
-            add(buf, pad_note(midi(n), bar + 3, bright), t, g * (0.6 if j == 0 else 0.35), pan=(j - 2) * 0.25)
-        # baixo
-        add(buf, pad_note(midi(chord[0] - 12), bar + 2, 0.05), t, g * 0.5)
-        # arpejo
-        if sec in ("doc", "calm", "end"):
-            notes = chord[1:] + [chord[1] + 12]
-            step = 0.5 if sec == "doc" else 0.75
-            for i in range(int(bar / step)):
-                n = notes[(i * 2 + k) % len(notes)] + 12
-                add(buf, pluck(midi(n)), t + i * step, 0.10 * g, pan=np.sin(i) * 0.6)
-        if sec == "tension":
-            for i in range(int(bar / 0.333)):
-                n = chord[0] + (12 if i % 2 else 0)
-                add(buf, pluck(midi(n), 0.6), t + i * 0.333, 0.16, pan=0.3 if i % 2 else -0.3)
+        g = {"suspense": 0.45, "doc": 0.5, "tension": 0.5, "calm": 0.55, "end": 0.65}[sec]
+        bright = {"suspense": 0.0, "doc": 0.3, "tension": 0.15, "calm": 0.35, "end": 0.45}[sec]
+        for j, n in enumerate(chord[:4]):
+            add(buf, warm_pad(midi(n), bar + 4, bright), t, g * (0.55 if j == 0 else 0.28), pan=(j - 1.5) * 0.3)
+        add(buf, warm_pad(midi(chord[0] - 12), bar + 3, 0.0), t, g * 0.45)
+        # piano esparso (motivo)
+        if sec != "suspense":
+            upper = [n + 12 for n in chord[1:]] + [chord[1] + 24]
+            r = np.random.default_rng(int(t) + 7)
+            if sec == "tension":
+                times = np.arange(0, bar, 1.0)
+                for i, tt in enumerate(times):
+                    note = chord[0] + (12 if i % 2 else 0)
+                    add(buf, felt_piano(midi(note), 2.5, 0.55), t + tt, 0.22, pan=-0.2 if i % 2 else 0.2)
+            else:
+                times = [0.0, 1.5, 3.0, 5.0, 6.0] if sec in ("doc", "end") else [0.0, 2.0, 4.0, 6.0]
+                for i, tt in enumerate(times):
+                    if r.random() < (0.85 if i == 0 else 0.6):
+                        note = upper[(i * 2 + k) % len(upper)]
+                        add(buf, felt_piano(midi(note), 5.0, r.uniform(0.5, 0.9)), t + tt + r.uniform(-0.05, 0.05),
+                            0.30, pan=r.uniform(-0.5, 0.5))
+        else:
+            # suspense: notas graves isoladas e um sino distante
+            add(buf, felt_piano(midi(chord[0] + 12), 6.0, 0.5), t + 0.5, 0.22)
+            add(buf, felt_piano(midi(chord[3] + 24), 6.0, 0.35), t + 4.5, 0.12, pan=0.4)
         t += bar
         k += 1
-    buf = lp(buf, 5000)
-    # reverb simples (atrasos múltiplos)
-    rev = np.zeros_like(buf)
-    for d, gg in ((0.031, 0.5), (0.047, 0.45), (0.071, 0.4), (0.113, 0.35), (0.173, 0.3), (0.257, 0.25)):
-        i = int(d * SR)
-        rev[i:] += buf[:-i] * gg
-    rev = lp(rev, 3000)
-    return buf + rev * 0.6
+    # reverberação de sala (convolução com resposta impulsiva sintética de ~3 s)
+    from scipy.signal import fftconvolve
+    L = int(3.0 * SR)
+    tt = np.arange(L) / SR
+    ir = np.stack([rng.standard_normal(L), rng.standard_normal(L)], 1) * np.exp(-tt * 2.3)[:, None]
+    ir = lp(ir, 5000)
+    ir[: int(0.02 * SR)] = 0
+    ir /= np.sqrt((ir ** 2).sum(axis=0))
+    wet = np.stack([fftconvolve(buf[:, c], ir[:, c])[: len(buf)] for c in (0, 1)], 1)
+    out = buf * 0.65 + wet * 0.55
+    return hp(out, 40)
 
 
 def ambience(D):
@@ -220,14 +263,13 @@ def sfx(D):
     w = waves(62)
     i = int(575 * SR)
     buf[i:i + len(w)] += w * 0.35
-    for c in CUTS:
-        if 1 < c < D - 1:
-            add(buf, whoosh(), c - 0.6, 0.10, rng.uniform(-0.4, 0.4))
+    for c in (122.0, 350.0, 401.0, 435.0, 542.0, 575.0, 637.0, 738.0, 813.0, 878.0):
+        add(buf, whoosh(1.4), c - 0.7, 0.05, rng.uniform(-0.3, 0.3))
     for t0 in (43.0, 595.0):
         add(buf, sting(), t0, 0.25)
         add(buf, hit(), t0, 0.35)
-    for t0 in (71.2, 117.4, 252.0, 269.5, 430.5, 534.3, 696.5, 727.5):
-        add(buf, hit(2.0, 45), t0, 0.28)
+    for t0 in (117.4, 252.0, 430.5, 534.3, 697.5):
+        add(buf, hit(2.5, 41), t0, 0.18)
     for i in range(12):
         add(buf, heartbeat(), 224 + i * 0.85 * (1 + max(0, i - 5) * 0.15), 0.5 * (1 if i < 6 else 0.7 ** (i - 5)))
     for a, b in ((414.5, 418.5), (506.5, 509.5), (795, 798), (634.2, 637)):
@@ -253,7 +295,7 @@ def main():
     under = np.ones(n)
     under[(tt < 37) | ((tt > 575) & (tt < 622)) | (tt > 910)] = 0.25
     under = lp(under, 1)
-    bed = mus * 0.55 + amb * (0.22 * under)[:, None] + fx * 0.5
+    bed = mus * 0.62 + amb * (0.16 * under)[:, None] + fx * 0.45
     bed /= np.max(np.abs(bed)) + 1e-9
     import wave
     pcm = (np.clip(bed, -1, 1) * 32000).astype(np.int16)
@@ -269,7 +311,7 @@ def main():
         "ffmpeg", "-v", "error", "-y", "-i", os.path.join(HERE, "narracao.wav"), "-i", p, "-filter_complex",
         "[0:a]aresample=48000,pan=stereo|c0=c0|c1=c0,highpass=f=70,acompressor=threshold=-20dB:ratio=3:attack=5:release=80,"
         "asplit=2[v][sc];"
-        "[1:a]volume=-15dB[b];"
+        "[1:a]volume=-19dB[b];"
         "[b][sc]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=600[bd];"
         "[v][bd]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[out]",
         "-map", "[out]", "-ar", "48000", os.path.join(OUT, "mix.wav")], check=True)

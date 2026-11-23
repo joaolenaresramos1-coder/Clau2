@@ -72,7 +72,6 @@ def sc_enter(ctx, t):
         p.update(armF=35 + 8 * math.sin(t), elbowF=30, armB=25, elbowB=30)  # braços sobre a água morna
     fig_ground(ctx, x, p, "swimmer", 1, t)
     B.water(ctx, t)
-    kicker(ctx, "ÁGUA A 30 °C · NINGUÉM NO MAR", W / 2, H * 0.12, t, 17.5, None, 18, (0.2, 0.25, 0.3))
     vignette(ctx, 0.35, t)
 
 
@@ -108,7 +107,8 @@ FX_FALL = W * 0.40
 def friend_state(t):
     """Posição, pose e direção do amigo (lógica: anda, entra até a cintura, é queimado, volta, desmaia)."""
     if t < 586:
-        return None
+        p = rig.p_stand(t)
+        return W * 0.30, p, 1
     if t < 591.5:
         x = kf(t, [(586, W * 0.30), (591.5, W * 0.66)], fn=lambda k: k)
         return x, rig.p_walk(t, 0.9 if x < B.SHORE_X else 0.6), 1
@@ -147,7 +147,7 @@ def draw_legs_marks(ctx, t, x, gy):
 def sc_scenario3(ctx, t):
     if t >= 622.5:
         return S.sc_scenario(ctx, t)
-    if t < 584.5:
+    if t < 575:
         return S2.sc_scenario2(ctx, t)
     B.sky(ctx, t, sunset=0.15)
     B.sand(ctx, t)

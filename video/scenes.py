@@ -376,12 +376,12 @@ def sc_cycle(ctx, t):
         rgba(ctx, (0.5, 0.7, 0.72), 0.35)
         ctx.set_line_width(3)
         ctx.stroke()
-        k = appear(t, 317.5, 20)
+        k = appear(t, 311.5, 24)
         ctx.arc(cx, cy, r, -math.pi / 2, -math.pi / 2 + 2 * math.pi * k)
         rgba(ctx, ORANGE, 0.9)
         ctx.set_line_width(5)
         ctx.stroke()
-        nodes = [("PÓLIPO NO MANGUE", -math.pi / 2, 317.0), ("ÁGUA-VIVA JOVEM", 0, 326.0),
+        nodes = [("PÓLIPO NO MANGUE", -math.pi / 2, 311.0), ("ÁGUA-VIVA JOVEM", 0, 326.0),
                  ("ADULTA", math.pi / 2, 332.0), ("MORRE NO INVERNO", math.pi, 336.0)]
         for i, (nm, ang, c0) in enumerate(nodes):
             a = appear(t, c0)
@@ -551,8 +551,8 @@ def sc_trick(ctx, t):
         timer(ctx, W * 0.25, H * 0.45, 140, clamp((t - 506.5) / 3), 1, "30 MIN")
         import rig
         hunch = appear(t, 510, 1.5)
-        pz = rig.blend(rig.p_stand(t), rig.pose(lean=30, thighF=20, kneeF=25, thighB=10, kneeB=20, armF=40,
-                                                 elbowF=90, armB=30, elbowB=80, neck=15), hunch)
+        pz = rig.blend(rig.p_stand(t), rig.pose(lean=30, thighF=20, kneeF=25, thighB=10, kneeB=20, armF=8,
+                                                 elbowF=62, armB=4, elbowB=58, neck=15), hunch)
         rig.figure(ctx, W * 0.62, H * 0.92, 2.28, pz, outfit="red".replace("red", "friend"), facing=-1, t=t)
         bp = body_pts(W * 0.62, H * 0.92, 1.9)
         for (key, c0) in (("back", 510), ("chest", 511), ("belly", 512)):
@@ -580,6 +580,7 @@ def sc_protect(ctx, t):
         person(ctx, W * 0.35, H * 0.92, 2.0, outfit="lifeguard", stockings=True,
                a=appear(t, 546))
         label(ctx, "SALVA-VIDAS DE MEIA-CALÇA", W * 0.35, H * 0.20, t, 547.5, None, 22)
+        callout(ctx, W * 0.35 + 6, H * 0.92 - 70, 34, W * 0.12, H * 0.62, "MEIA-CALÇA", appear(t, 549))
         k = appear(t, 555.5)
         if k > 0:
             x0 = W * 0.62
@@ -652,8 +653,8 @@ def sc_scenario(ctx, t):
                 ("C", "CORRER ATRÁS DO VINAGRE", 631.3)]
         for i, (lt, nm, c0) in enumerate(opts):
             a = appear(t, c0)
-            x = W / 2 + (i - 1) * 400
-            card(ctx, x - 180, H * 0.22, 360, 300, a, fill=(0.1, 0.3, 0.35))
+            x = W / 2 + (i - 1) * 370
+            card(ctx, x - 165, H * 0.22, 330, 300, a, fill=(0.1, 0.3, 0.35))
             if i == 0:
                 rrect(ctx, x - 30, H * 0.30, 60, 120, 10)
                 rgba(ctx, (0.5, 0.8, 0.95), a)
@@ -669,8 +670,8 @@ def sc_scenario(ctx, t):
                     line(ctx, x - 70, H * 0.45 + j * 8, x + 70, H * 0.43 + j * 10, JELLY, a, 2)
             else:
                 icon(ctx, "bottle", x, H * 0.40, 2.2, a)
-            text(ctx, lt, x - 150, H * 0.22 + 270, 34, ORANGE, a, "l")
-            text(ctx, nm, x - 110, H * 0.22 + 270, 19, WHITE, a, "l")
+            text(ctx, lt, x - 140, H * 0.22 + 272, 30, ORANGE, a, "l", "black")
+            text(ctx, nm, x - 108, H * 0.22 + 270, 15, WHITE, a, "l", "bold", sp=1)
         k = appear(t, 634.2)
         if k > 0:
             text(ctx, "ESCOLHA UMA ANTES DE EU TE CONTAR", W / 2, H * 0.83, 30, ORANGE, k)
