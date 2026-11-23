@@ -25,14 +25,14 @@ def sc_open(ctx, t):
     cam = min(t, 27) * 2.2
 
     def mid(c):
-        if 13 <= t < 23:
+        if 13 <= t < 32.5:
             p = clamp((t - 13) / 7)
             x = W * 0.50 + p * W * 0.10 - cam * 0.5
             fy = lerp(H * 0.695, H * 0.665, p)
             wade(c, x, fy, 0.48, 0.15 + 0.40 * p, t, outfit="swim", pose="walk" if p < 1 else "stand",
                  arm=lerp(10, 40, p))
-        elif t >= 23:
-            p = clamp((t - 23) / 14)
+        elif t >= 32.5:
+            p = clamp((t - 32.5) / 5)
             x = W * 0.62 + p * W * 0.10 - cam * 0.5
             swimmer(c, x, H * 0.635, 0.32, t, outfit="swim", facing=1)
             ctx.move_to(x - 60, H * 0.64)

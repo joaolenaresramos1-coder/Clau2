@@ -15,7 +15,7 @@ import cairo
 from gfx import W, H, FPS
 import math
 from gfx import ease, clamp
-from scenes2 import SCENES, CUTS
+from scenes3 import SCENES, CUTS
 from overlays import draw_inserts
 
 OW, OH = 1920, 1080

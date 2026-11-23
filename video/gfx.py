@@ -969,3 +969,80 @@ def wade(ctx, x, feet_y, s, depth, t, a=1.0, **kw):
     rgba(ctx, WHITE, 0.8 * a)
     ctx.set_line_width(2)
     ctx.stroke()
+
+
+# ---------------------------------------------------------------- ponte para o novo personagem (rig.py)
+_OUTFIT_MAP = {"swim": "swimmer", "red": "friend", "kid": "kid", "lifeguard": "lifeguard", "lycra": "lycra",
+               "diver": "diver", None: "swimmer"}
+_old_person = person
+
+
+def person(ctx, x, y, s, a=1.0, body=None, skin=SKIN, accent=None, pose="stand", t=0.0, rot=0.0,
+           arm=0.0, legs_skin=False, stockings=False, outfit=None, kick=0.0, facing=None):
+    """Compatível com as chamadas antigas, mas desenha o personagem de perfil do rig."""
+    import rig
+    o = "stockings" if stockings else _OUTFIT_MAP.get(outfit, "swimmer")
+    if facing is None:
+        facing = 1 if x < W * 0.6 else -1
+    k = clamp(-rot / (math.pi / 2)) if rot < 0 else 0.0
+    if pose == "walk":
+        p = rig.p_walk(t)
+    elif pose == "run":
+        p = rig.p_run(t)
+    elif pose == "kneel":
+        p = rig.p_kneel(t)
+    elif arm >= 120:
+        p = rig.p_shout(t)
+    else:
+        p = rig.p_stand(t)
+    if k > 0:
+        p = rig.blend(p, rig.p_lie(t), ease(k)) if k < 1 else rig.p_lie(t)
+    rig.figure(ctx, x, y, s * 1.2, p, outfit=o, facing=facing, a=a, t=t)
+
+
+def swimmer(ctx, x, y, s, t, a=1.0, outfit="swim", facing=1, speed=1.0, tilt=0.0, stroke=True):
+    import rig
+    p = rig.p_swim(t, speed) if stroke else rig.p_float_limp(t)
+    if stroke:
+        p["rot"] = 88 + math.degrees(tilt) * (1 if facing > 0 else 1)
+    rig.figure(ctx, x, y + 4, s * 1.2, p, outfit=_OUTFIT_MAP.get(outfit, "swimmer"), facing=facing, a=a,
+               ground=False)
+
+
+def wade(ctx, x, feet_y, s, depth, t, a=1.0, pose="stand", rot=0.0, arm=0.0, outfit="swim", **kw):
+    person(ctx, x, feet_y, s, a, pose=pose, rot=rot, arm=arm, outfit=outfit, t=t, facing=kw.get("facing"))
+    if depth <= 0:
+        return
+    wl = feet_y - depth * 210 * s
+    ctx.rectangle(x - 60 * s, wl, 120 * s, feet_y - wl + 8)
+    g = cairo.LinearGradient(0, H * 0.48, 0, H * 0.72)
+    g.add_color_stop_rgb(0, 0.20, 0.52, 0.60)
+    g.add_color_stop_rgb(1, 0.42, 0.78, 0.78)
+    ctx.set_source(g)
+    ctx.fill()
+    ctx.move_to(x - 60 * s, wl)
+    for i in range(13):
+        ctx.line_to(x - 60 * s + i * 10 * s, wl + math.sin(t * 3 + i) * 1.2)
+    rgba(ctx, WHITE, 0.8 * a)
+    ctx.set_line_width(2)
+    ctx.stroke()
+
+
+def studio(ctx, t, ground_y=H * 0.90):
+    """Fundo neutro escuro com linha de chão (como as comparações 'YOU' do canal): sem água, sem fundo do mar."""
+    g = cairo.LinearGradient(0, 0, 0, H)
+    g.add_color_stop_rgb(0, 0.06, 0.12, 0.15)
+    g.add_color_stop_rgb(1, 0.02, 0.05, 0.07)
+    ctx.set_source(g)
+    ctx.paint()
+    for px, py, r, sp, ph in PARTS[:40]:
+        circle(ctx, (px * W) % W, (py * H - t * 2) % H, r * 0.8, (0.8, 0.9, 0.95), 0.10)
+    line(ctx, 0, ground_y, W, ground_y, (0.55, 0.65, 0.68), 0.35, 1.5)
+
+
+def body_pts(x, ground_y, s_old):
+    """Pontos do corpo do personagem (em pé) para marcar dor/queimaduras: costas, peito, barriga, cabeça, canela."""
+    sc = s_old * 1.2
+    hip = ground_y - 94 * sc
+    return dict(back=(x - 8 * sc, hip - 36 * sc), chest=(x + 6 * sc, hip - 40 * sc), belly=(x + 6 * sc, hip - 14 * sc),
+                head=(x, hip - 72 * sc), shin=(x + 3 * sc, ground_y - 24 * sc), sc=sc)

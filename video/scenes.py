@@ -231,8 +231,7 @@ def sc_why(ctx, t):
 
 # 03:31 – 04:09  O veneno
 def sc_venom(ctx, t):
-    ocean(ctx, t, top=(0.08, 0.12, 0.16))
-    seabed(ctx, t, y=H * 0.91)
+    studio(ctx, t, H * 0.92)
     label(ctx, "O QUE O VENENO FAZ", W / 2, 70, t, 211.3, None, 34, ORANGE)
     # células
     k = window(t, 214, 224)
@@ -457,20 +456,20 @@ def sc_history(ctx, t):
 
 # 06:41 – 07:15  Síndrome de Irukandji
 def sc_syndrome(ctx, t):
-    ocean(ctx, t, top=(0.06, 0.13, 0.17))
-    seabed(ctx, t, y=H * 0.91)
+    studio(ctx, t, H * 0.90)
+    bp = body_pts(W * 0.33, H * 0.90, 1.8)
     chapter(ctx, "CAIRNS · QUEENSLAND", "1952", "UMA DOENÇA ESTRANHA", W / 2, 95, t, 403.5, None, 44)
     person(ctx, W * 0.33, H * 0.90, 1.8, outfit="swim", a=appear(t, 405))
-    circle(ctx, W * 0.33 + 20, H * 0.90 - 120, 10, RED, appear(t, 410) * 0.8)
+    circle(ctx, *bp["shin"], 7, RED, appear(t, 410) * 0.9)
     label(ctx, "UMA QUEIMADURA PEQUENA", W * 0.33, H * 0.27, t, 410, 414, 22)
     k = appear(t, 414.5)
     if k > 0:
         timer(ctx, W * 0.70, H * 0.45, 130, clamp((t - 414.5) / 3.5), k, "30 MIN")
     pain = appear(t, 418.5)
     if pain > 0:
-        for (dx, dy, c0) in ((0, -230, 418.5), (0, -170, 419.5), (-10, -130, 420)):
-            pk = appear(t, c0) * (0.5 + 0.5 * math.sin(t * 6))
-            circle(ctx, W * 0.33 + dx, H * 0.90 + dy * 1.8 / 1.8 * 1.0, 34, RED, 0.5 * pk)
+        for (key, c0) in (("back", 418.5), ("chest", 419.5), ("belly", 420)):
+            pk = appear(t, c0) * (0.5 + 0.5 * math.sin(t * 6 + c0))
+            circle(ctx, *bp[key], 26, RED, 0.45 * pk)
         for i, w in enumerate(["DOR NAS COSTAS", "CÃIBRAS", "VÔMITO", "SUOR", "SENSAÇÃO DE MORTE"]):
             label(ctx, w, W * 0.70, H * 0.80 + 0 * i, t, 418.5 + i * 1.2, 418.5 + (i + 1) * 1.2, 30,
                   RED if i == 4 else WHITE)
@@ -480,8 +479,7 @@ def sc_syndrome(ctx, t):
 
 # 07:15 – 07:43  Jack Barnes
 def sc_barnes(ctx, t):
-    ocean(ctx, t)
-    seabed(ctx, t, y=H * 0.91)
+    studio(ctx, t, H * 0.82)
     chapter(ctx, "1961", "JACK", "BARNES", W / 2, 95, t, 435.5, None, 44)
     if t < 447:
         iruk(ctx, W / 2, H * 0.35, 2.2, t, appear(t, 440))
@@ -549,11 +547,18 @@ def sc_trick(ctx, t):
         label(ctx, "UMA MANCHINHA VERMELHA", W / 2, H * 0.90, t, 497, None, 30)
         label(ctx, "E A PESSOA SE SENTE ÓTIMA", W / 2, H * 0.96, t, 502, None, 20, GREEN)
     elif t < 534:
+        studio(ctx, t, H * 0.92)
         timer(ctx, W * 0.25, H * 0.45, 140, clamp((t - 506.5) / 3), 1, "30 MIN")
-        person(ctx, W * 0.62, H * 0.92, 1.9, outfit="swim")
-        for (yy, c0) in ((360, 510), (410, 511), (460, 512)):
-            pk = appear(t, c0) * (0.5 + 0.5 * math.sin(t * 5 + yy))
-            circle(ctx, W * 0.62, yy, 40, RED, 0.5 * pk)
+        import rig
+        hunch = appear(t, 510, 1.5)
+        pz = rig.blend(rig.p_stand(t), rig.pose(lean=30, thighF=20, kneeF=25, thighB=10, kneeB=20, armF=40,
+                                                 elbowF=90, armB=30, elbowB=80, neck=15), hunch)
+        rig.figure(ctx, W * 0.62, H * 0.92, 2.28, pz, outfit="red".replace("red", "friend"), facing=-1, t=t)
+        bp = body_pts(W * 0.62, H * 0.92, 1.9)
+        for (key, c0) in (("back", 510), ("chest", 511), ("belly", 512)):
+            pk = appear(t, c0) * (0.5 + 0.5 * math.sin(t * 5 + c0))
+            x0, y0 = bp[key]
+            circle(ctx, x0 - 10, y0 + 25 * hunch, 30, RED, 0.45 * pk)
         label(ctx, "COSTAS · PEITO · BARRIGA", W * 0.62, H * 0.12, t, 510, None, 26, RED)
         label(ctx, "VEM EM ONDAS", W * 0.62, H * 0.18, t, 512.5, None, 20)
         label(ctx, "INTERNADOS POR DIAS", W * 0.25, H * 0.82, t, 514.5, 518.5, 24)
@@ -570,7 +575,7 @@ def sc_trick(ctx, t):
 # 09:02 – 09:35  Meia-calça, lycra, vinagre
 def sc_protect(ctx, t):
     if t < 563:
-        ocean(ctx, t)
+        studio(ctx, t, H * 0.92)
         chapter(ctx, "QUEENSLAND", "ANOS", "80", W / 2, 90, t, 545.5, None, 46)
         person(ctx, W * 0.35, H * 0.92, 2.0, outfit="lifeguard", stockings=True,
                a=appear(t, 546))
