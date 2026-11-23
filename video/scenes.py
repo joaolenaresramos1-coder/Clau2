@@ -437,7 +437,7 @@ def sc_history(ctx, t):
         vignette(ctx)
         return
     pr = draw_aus(ctx, W * 0.08, H * 0.10, W * 0.50, H * 0.80, appear(t, 358))
-    pin(ctx, *pr(146.0, -18.3), appear(t, 370), "CARDWELL")
+    pin(ctx, *pr(146.0, -18.3), appear(t, 374.5), "CARDWELL")
     pin(ctx, *pr(145.8, -16.9), appear(t, 377), "CAIRNS", c=WHITE)
     chapter(ctx, "CARDWELL · QUEENSLAND", "JANEIRO", "1955", W * 0.80, H * 0.22, t, 368.5, None, 36)
     label(ctx, "MENINO DE 5 ANOS", W * 0.80, H * 0.29, t, 370.5, None, 22)

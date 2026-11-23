@@ -13,11 +13,55 @@ from multiprocessing import Process
 import cairo
 
 from gfx import W, H, FPS
-from scenes import draw_frame
+import math
+from gfx import ease, clamp
+from scenes import SCENES, CUTS
+from overlays import draw_inserts
+
+OW, OH = 1920, 1080
+SC = OW / W
+XF = 0.35  # meia-duração da transição
+
+
+def scene_draw(ctx, t):
+    for s, e, fn in SCENES:
+        if s <= t < e:
+            p = (t - s) / max(1.0, min(e, 935) - s)
+            z = 1.0 + 0.04 * ease(p)
+            dx = math.sin(t * 0.07 + s) * 6
+            dy = math.cos(t * 0.05 + s) * 4
+            ctx.save()
+            ctx.translate(W / 2 + dx, H / 2 + dy)
+            ctx.scale(z, z)
+            ctx.translate(-W / 2, -H / 2)
+            fn(ctx, t)
+            ctx.restore()
+            break
+    draw_inserts(ctx, t)
+
+
+def draw_frame(ctx, t):
+    cut = next((c for c in CUTS if c > 0 and abs(t - c) < XF), None)
+    if cut is None:
+        scene_draw(ctx, t)
+    else:
+        k = ease((t - (cut - XF)) / (2 * XF))
+        ctx.push_group()
+        scene_draw(ctx, min(t, cut - 0.02))
+        ctx.pop_group_to_source()
+        ctx.paint()
+        ctx.push_group()
+        scene_draw(ctx, max(t, cut + 0.02))
+        ctx.pop_group_to_source()
+        ctx.paint_with_alpha(k)
+    if t < 0.8:
+        ctx.set_source_rgba(0, 0, 0, 1 - t / 0.8)
+        ctx.paint()
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "out")
 AUDIO = os.path.join(HERE, "narracao.wav")
+MIX = os.path.join(HERE, "out", "mix.wav")
 
 
 def duration():
@@ -27,8 +71,9 @@ def duration():
 
 
 def render_png(t, path):
-    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
+    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, OW, OH)
     ctx = cairo.Context(surf)
+    ctx.scale(SC, SC)
     draw_frame(ctx, t)
     surf.write_to_png(path)
 
@@ -36,11 +81,12 @@ def render_png(t, path):
 def render_part(i, f0, f1):
     path = os.path.join(OUT, f"part{i}.mp4")
     ff = subprocess.Popen(
-        ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgra", "-s", f"{W}x{H}", "-r", str(FPS),
-         "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", path],
+        ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgra", "-s", f"{OW}x{OH}", "-r", str(FPS),
+         "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", path],
         stdin=subprocess.PIPE)
-    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
+    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, OW, OH)
     ctx = cairo.Context(surf)
+    ctx.scale(SC, SC)
     for f in range(f0, f1):
         ctx.save()
         ctx.set_operator(cairo.OPERATOR_SOURCE)
@@ -71,9 +117,9 @@ def full(nproc=4):
     with open(lst, "w") as f:
         for i in range(nproc):
             f.write(f"file 'part{i}.mp4'\n")
-    final = os.path.join(OUT, "agua_viva_caixa.mp4")
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-i", AUDIO,
-                    "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest",
+    final = os.path.join(OUT, "agua_viva_caixa_v2.mp4")
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-i", MIX if os.path.exists(MIX) else AUDIO,
+                    "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-shortest",
                     "-movflags", "+faststart", final], check=True)
     print("pronto:", final)
 

@@ -262,7 +262,11 @@ def grain(ctx, a=0.06, t=0.0):
     ctx.restore()
 
 
-def ocean(ctx, t, top=DEEP_TOP, bot=DEEP_BOT, rays=True, particles=True, light=1.0):
+DISTANT = [(_rng.random(), _rng.uniform(0.15, 0.75), _rng.uniform(0.18, 0.32), _rng.uniform(4, 9), _rng.random())
+           for _ in range(4)]
+
+
+def ocean(ctx, t, top=DEEP_TOP, bot=DEEP_BOT, rays=True, particles=True, light=1.0, distant=True):
     g = cairo.LinearGradient(0, 0, 0, H)
     g.add_color_stop_rgb(0, *top)
     g.add_color_stop_rgb(1, *bot)
@@ -282,6 +286,11 @@ def ocean(ctx, t, top=DEEP_TOP, bot=DEEP_BOT, rays=True, particles=True, light=1
             ctx.close_path()
             ctx.set_source(g)
             ctx.fill()
+    if distant:
+        for px, py, sc, sp, ph in DISTANT:
+            x = ((px * (W + 300) + t * sp) % (W + 300)) - 150
+            y = H * py + math.sin(t * 0.2 + ph * 6) * 20
+            box_jelly(ctx, x, y, sc, t * 0.7, a=0.13, tents_per=2, phase=ph * 6, col=(0.55, 0.75, 0.82))
     if particles:
         for px, py, r, sp, ph in PARTS:
             x = (px * W + math.sin(t * 0.4 + ph * 6) * 15) % W
