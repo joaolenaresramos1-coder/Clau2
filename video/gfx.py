@@ -216,6 +216,7 @@ def callout(ctx, px, py, r, tx, ty, s, k, size=16):
     if k <= 0:
         return
     ctx.set_dash([5, 4])
+    ctx.new_sub_path()
     ctx.arc(px, py, r * (0.7 + 0.3 * k), 0, 2 * math.pi)
     rgba(ctx, YELLOW, k)
     ctx.set_line_width(2)
@@ -372,7 +373,7 @@ def surface_line(ctx, t, y, sky=True):
     ctx.fill()
 
 
-def sky_beach(ctx, t, horizon=0.48, sunset=1.0, cam=0.0):
+def sky_beach(ctx, t, horizon=0.48, sunset=1.0, cam=0.0, mid=None):
     hy = H * horizon
     g = cairo.LinearGradient(0, 0, 0, hy)
     g.add_color_stop_rgb(0, lerp(0.55, 0.40, sunset), lerp(0.74, 0.58, sunset), lerp(0.86, 0.76, sunset))
@@ -407,6 +408,8 @@ def sky_beach(ctx, t, horizon=0.48, sunset=1.0, cam=0.0):
         rgba(ctx, WHITE, 0.4)
         ctx.set_line_width(2)
         ctx.stroke()
+    if mid:
+        mid(ctx)
     ctx.move_to(0, H * 0.70)
     ctx.curve_to(W * 0.3, H * 0.68, W * 0.6, H * 0.74, W, H * 0.71)
     ctx.line_to(W, H + 5)
@@ -587,7 +590,13 @@ def person(ctx, x, y, s, a=1.0, body=None, skin=SKIN, accent=None, pose="stand",
     ctx.translate(x, y)
     ctx.rotate(rot)
     ctx.scale(s, s)
-    sw = math.sin(t * 3) * 0.3 if pose == "walk" else kick * math.sin(t * 5)
+    if pose == "kneel":
+        ctx.translate(0, 50)
+    elif pose in ("walk", "run"):
+        ctx.translate(0, -abs(math.sin(t * (3 if pose == "walk" else 6))) * 4)
+    else:
+        ctx.translate(0, math.sin(t * 1.6) * 0.8)  # respiração
+    sw = math.sin(t * 3) * 0.3 if pose == "walk" else math.sin(t * 6) * 0.55 if pose == "run" else kick * math.sin(t * 5)
     hip_y, sh_y = -100, -170
     # braço de trás
     ang = math.radians(18 + arm)
@@ -600,6 +609,9 @@ def person(ctx, x, y, s, a=1.0, body=None, skin=SKIN, accent=None, pose="stand",
     for side, ph in ((-1, sw), (1, -sw)):
         knee = (side * 10 + ph * 22, hip_y + 48)
         foot = (side * 11 + ph * 44, -6)
+        if pose == "kneel":
+            knee = (side * 6 + 40, -58)
+            foot = (side * 4 - 20, -52)
         limb(ctx, [(side * 9, hip_y), knee, foot], 15, lc, a)
         if stockings:
             limb(ctx, [(side * 9, hip_y + 10), knee, foot], 15, (0.86, 0.68, 0.52), a * 0.7, outline=False)
@@ -838,3 +850,122 @@ def timer(ctx, x, y, r, k, a=1.0, label_txt=None):
         ctx.stroke()
     if label_txt:
         text(ctx, label_txt, x, y + r * 0.13, r * 0.36, WHITE, a, weight="black")
+
+
+# ---------------------------------------------------------------- animação
+def kf(t, keys, fn=None):
+    """Interpola valores (números ou tuplas) entre quadros-chave [(tempo, valor), ...] com easing."""
+    fn = fn or ease
+    if t <= keys[0][0]:
+        return keys[0][1]
+    for (t0, v0), (t1, v1) in zip(keys, keys[1:]):
+        if t <= t1:
+            k = fn((t - t0) / max(1e-6, t1 - t0))
+            if isinstance(v0, tuple):
+                return tuple(a + (b - a) * k for a, b in zip(v0, v1))
+            return v0 + (v1 - v0) * k
+    return keys[-1][1]
+
+
+def bubbles(ctx, x, y, t, n=10, rise=140, a=1.0, seed=0, spread=10, speed=0.7):
+    """Trilha de bolhas subindo a partir de (x, y)."""
+    for k in range(n):
+        ph = (t * speed + k / n + seed * 0.37) % 1.0
+        bx = x + math.sin(k * 7.1 + t * 3 + seed) * spread * ph
+        by = y - ph * rise
+        r = 1.5 + 3.5 * ph * (0.6 + 0.4 * math.sin(k * 3.3))
+        aa = a * (1 - ph) * 0.9
+        ctx.new_sub_path()
+        ctx.arc(bx, by, r, 0, 2 * math.pi)
+        rgba(ctx, (0.85, 0.95, 1.0), aa * 0.25)
+        ctx.fill_preserve()
+        rgba(ctx, (0.9, 0.97, 1.0), aa)
+        ctx.set_line_width(1.2)
+        ctx.stroke()
+
+
+def splash(ctx, x, y, t, t0, a=1.0, size=1.0):
+    """Respingo na superfície em t0."""
+    k = (t - t0) / 1.2
+    if not (0 <= k <= 1):
+        return
+    for i in range(14):
+        ang = math.pi + (i + 0.5) / 14 * math.pi
+        d = 70 * size * ease(k)
+        px = x + math.cos(ang) * d
+        py = y + math.sin(ang) * d * 0.9 + 140 * size * k * k
+        circle(ctx, px, py, 4 * size * (1 - k) + 1, (0.92, 0.98, 1.0), a * (1 - k))
+    ellipse_path(ctx, x, y, 60 * size * ease(k) + 5, 8 * size * ease(k) + 1)
+    rgba(ctx, WHITE, a * (1 - k) * 0.8)
+    ctx.set_line_width(2.5)
+    ctx.stroke()
+
+
+def swimmer(ctx, x, y, s, t, a=1.0, outfit="swim", facing=1, speed=1.0, tilt=0.0, stroke=True):
+    """Pessoa nadando na horizontal: pernas batendo, braços em braçada."""
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.scale(-facing, 1)
+    ctx.rotate(-tilt)
+    arm = (150 + math.sin(t * 4 * speed) * 22) if stroke else 60
+    person(ctx, 95 * s, 0, s, a, rot=-math.pi / 2, outfit=outfit, kick=1.0 * speed, t=t, arm=arm)
+    ctx.restore()
+
+
+def scale_bar(ctx, x1, x2, y, k, lab, a=1.0):
+    """Barra amarela de escala com marcas nas pontas e rótulo (como '5 m')."""
+    if k <= 0:
+        return
+    xe = lerp(x1, x2, ease(k))
+    line(ctx, x1, y, xe, y, YELLOW, a, 2.5)
+    line(ctx, x1, y - 8, x1, y + 8, YELLOW, a, 2.5)
+    if k >= 0.99:
+        line(ctx, x2, y - 8, x2, y + 8, YELLOW, a, 2.5)
+        text(ctx, lab, (x1 + x2) / 2, y + 28, 18, YELLOW, a * appear(k, 0.99, 0.01), "c", "bold", sp=0.5)
+
+
+def flashlight(ctx, x, y, ang, length=380, spread=0.28, a=1.0):
+    g = cairo.RadialGradient(x, y, 5, x, y, length)
+    g.add_color_stop_rgba(0, 0.95, 0.97, 0.9, 0.55 * a)
+    g.add_color_stop_rgba(1, 0.95, 0.97, 0.9, 0)
+    ctx.move_to(x, y)
+    ctx.line_to(x + math.cos(ang - spread) * length, y + math.sin(ang - spread) * length)
+    ctx.line_to(x + math.cos(ang + spread) * length, y + math.sin(ang + spread) * length)
+    ctx.close_path()
+    ctx.set_source(g)
+    ctx.fill()
+
+
+def school(ctx, cx, cy, t, n=14, spread=120, s=0.35, a=1.0, seed=1, c=(0.5, 0.6, 0.65), speed=30):
+    rnd = random.Random(seed)
+    for i in range(n):
+        ox, oy = rnd.uniform(-spread, spread), rnd.uniform(-spread * 0.4, spread * 0.4)
+        x = cx + ox + math.sin(t * 0.8 + i) * 10 + t * speed * 0
+        y = cy + oy + math.sin(t * 1.3 + i * 2) * 6
+        fish(ctx, x, y, s, t + i, c=c, a=a)
+
+
+def sea_color(y):
+    k = clamp((y - H * 0.48) / (H * 0.24))
+    return (lerp(0.20, 0.42, k), lerp(0.52, 0.78, k), lerp(0.60, 0.78, k))
+
+
+def wade(ctx, x, feet_y, s, depth, t, a=1.0, **kw):
+    """Pessoa dentro da água rasa: a água cobre o corpo até a profundidade 'depth' (0..1 do corpo)."""
+    person(ctx, x, feet_y, s, a, t=t, **kw)
+    if depth <= 0:
+        return
+    wl = feet_y - depth * 210 * s
+    ctx.rectangle(x - 45 * s, wl, 90 * s, feet_y - wl + 6)
+    g = cairo.LinearGradient(0, H * 0.48, 0, H * 0.72)
+    g.add_color_stop_rgb(0, 0.20, 0.52, 0.60)
+    g.add_color_stop_rgb(1, 0.42, 0.78, 0.78)
+    ctx.set_source(g)
+    ctx.fill()
+    ctx.move_to(x - 45 * s, wl)
+    for i in range(10):
+        xx = x - 45 * s + i * 10 * s
+        ctx.line_to(xx, wl + math.sin(t * 3 + i) * 1.2)
+    rgba(ctx, WHITE, 0.8 * a)
+    ctx.set_line_width(2)
+    ctx.stroke()

@@ -79,3 +79,49 @@ def pin(ctx, x, y, k, name=None, c=ORANGE, side="r"):
     circle(ctx, x, y, 6 * k, c, k)
     if name:
         text(ctx, name, x + (16 if side == "r" else -16), y + 6, 20, WHITE, k, "l" if side == "r" else "r")
+
+
+def globe(ctx, x, y, r, k, lon0=135, lat0=-25, hl=(146, -17), name=None):
+    """Globo localizador pequeno com destaque laranja e rótulo (como 'GULF OF CALIFORNIA')."""
+    if k <= 0:
+        return
+    import math as _m
+    lam0, ph0 = _m.radians(lon0), _m.radians(lat0)
+
+    def proj(lon, lat):
+        lam, ph = _m.radians(lon), _m.radians(lat)
+        cosc = _m.sin(ph0) * _m.sin(ph) + _m.cos(ph0) * _m.cos(ph) * _m.cos(lam - lam0)
+        px = r * _m.cos(ph) * _m.sin(lam - lam0)
+        py = r * (_m.cos(ph0) * _m.sin(ph) - _m.sin(ph0) * _m.cos(ph) * _m.cos(lam - lam0))
+        return x + px, y - py, cosc
+
+    ctx.save()
+    ctx.new_sub_path()
+    ctx.arc(x, y, r, 0, 2 * _m.pi)
+    g = cairo.RadialGradient(x - r * 0.3, y - r * 0.3, 2, x, y, r)
+    g.add_color_stop_rgba(0, 0.28, 0.62, 0.68, k)
+    g.add_color_stop_rgba(1, 0.10, 0.30, 0.36, k)
+    ctx.set_source(g)
+    ctx.fill_preserve()
+    ctx.clip()
+    for poly in (AUS, EUA, AFR, TAS) + tuple(ISLANDS):
+        pts = [proj(*p) for p in poly]
+        if all(c < 0 for _, _, c in pts):
+            continue
+        ctx.move_to(pts[0][0], pts[0][1])
+        for px, py, _ in pts[1:]:
+            ctx.line_to(px, py)
+        ctx.close_path()
+        rgba(ctx, MAPLAND, k)
+        ctx.fill()
+    hx, hy, _ = proj(*hl)
+    circle(ctx, hx, hy, r * 0.22, ORANGE, 0.35 * k)
+    circle(ctx, hx, hy, r * 0.09, ORANGE, k)
+    ctx.restore()
+    ctx.new_sub_path()
+    ctx.arc(x, y, r, 0, 2 * _m.pi)
+    rgba(ctx, WHITE, 0.85 * k)
+    ctx.set_line_width(2)
+    ctx.stroke()
+    if name:
+        text(ctx, name, x, y + r + 22, 13, WHITE, k, "c", "bold", sp=1.2)
