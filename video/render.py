@@ -117,7 +117,7 @@ def full(nproc=4):
     with open(lst, "w") as f:
         for i in range(nproc):
             f.write(f"file 'part{i}.mp4'\n")
-    final = os.path.join(OUT, "agua_viva_caixa_v2.mp4")
+    final = os.path.join(OUT, "agua_viva_caixa_v3.mp4")
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-i", MIX if os.path.exists(MIX) else AUDIO,
                     "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-shortest",
                     "-movflags", "+faststart", final], check=True)
