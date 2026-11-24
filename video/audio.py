@@ -2,6 +2,7 @@
 
 Uso: python3 audio.py  -> out/mix.wav
 """
+import math
 import os
 import subprocess
 import numpy as np
@@ -179,6 +180,131 @@ def music(D):
     return hp(out, 40)
 
 
+# ------------------------------------------------------------------ estilo eletrônica submarina
+BPM = 84.0
+BEAT = 60.0 / BPM
+
+
+def saw_pad(freq, length, cutoff=900.0, lfo=0.07):
+    """Supersaw filtrado com varredura lenta de filtro (respira como a água)."""
+    n = int(length * SR)
+    t = np.arange(n) / SR
+    s = np.zeros(n)
+    for det in (-0.14, -0.05, 0.0, 0.06, 0.15):
+        f = freq * 2 ** (det / 12)
+        ph = rng.uniform(0, 1)
+        s += 2 * (((f * t + ph) % 1.0) - 0.5)
+    s /= 5
+    # filtro: média de dois cortes, misturados pela LFO
+    lo, hi = lp(s, cutoff * 0.5), lp(s, cutoff * 1.6)
+    m = 0.5 + 0.5 * np.sin(2 * np.pi * lfo * t + rng.uniform(0, 6))
+    s = lo * (1 - m) + hi * m
+    return s * env_adsr(n, min(2.5, length / 3), min(3.0, length / 3))
+
+
+def sub_bass(freq, length):
+    n = int(length * SR)
+    t = np.arange(n) / SR
+    s = np.sin(2 * np.pi * freq * t) + 0.25 * np.sin(4 * np.pi * freq * t)
+    return s * env_adsr(n, 0.01, 0.15) * np.exp(-t * 1.2)
+
+
+def kick():
+    n = int(0.5 * SR)
+    t = np.arange(n) / SR
+    f = 45 + 90 * np.exp(-t * 30)
+    return np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 7)
+
+
+def soft_hat():
+    n = int(0.08 * SR)
+    t = np.arange(n) / SR
+    return hp(rng.standard_normal(n), 6000) * np.exp(-t * 60) * 0.5
+
+
+def rim():
+    n = int(0.12 * SR)
+    t = np.arange(n) / SR
+    return (bp(rng.standard_normal(n), 1500, 3500) * np.exp(-t * 40) + np.sin(2 * np.pi * 820 * t) * np.exp(-t * 50))
+
+
+def pluck_syn(freq, length=1.2):
+    n = int(length * SR)
+    t = np.arange(n) / SR
+    s = 2 * (((freq * t) % 1.0) - 0.5) * 0.6 + np.sin(2 * np.pi * freq * t)
+    s = lp(s, 2200) * np.exp(-t * 4.5)
+    return s * env_adsr(n, 0.003, 0.1)
+
+
+def sonar():
+    n = int(2.5 * SR)
+    t = np.arange(n) / SR
+    return np.sin(2 * np.pi * 1320 * t) * np.exp(-t * 3.2) * env_adsr(n, 0.002, 0.3)
+
+
+def music(D):
+    buf = np.zeros((int(D * SR) + 8 * SR, 2))
+    drums = np.zeros_like(buf)
+    bar = 4 * BEAT * 2  # 2 compassos por acorde
+    t = 0.0
+    k = 0
+    while t < D:
+        sec = section(t)
+        chord = PROG[sec][k % len(PROG[sec])]
+        pad_cut = {"suspense": 500, "doc": 900, "tension": 700, "calm": 1100, "end": 1400}[sec]
+        for j, n in enumerate(chord[:4]):
+            add(buf, saw_pad(midi(n), bar + 3, pad_cut), t, 0.30 if j else 0.42, pan=(j - 1.5) * 0.35)
+        nbeats = int(bar / BEAT)
+        # baixo sub pulsando
+        if sec != "suspense":
+            for i in range(nbeats):
+                if sec == "tension" or i % 2 == 0:
+                    sub = 4 if sec == "tension" else 1
+                    for q in range(sub):
+                        add(buf, sub_bass(midi(chord[0] - 12), BEAT / sub * 0.95), t + i * BEAT + q * BEAT / sub,
+                            0.55 if q == 0 else 0.35)
+        # bateria eletrônica suave
+        if sec in ("doc", "tension", "end"):
+            for i in range(nbeats):
+                tb = t + i * BEAT
+                if i % 4 in (0, 2) or (sec == "tension" and i % 2 == 1):
+                    add(drums, kick(), tb, 0.55)
+                if i % 4 == 2:
+                    add(drums, rim(), tb, 0.18, pan=0.2)
+                for h in range(2):
+                    add(drums, soft_hat(), tb + h * BEAT / 2, 0.12 if h else 0.07, pan=-0.3)
+        # arpejo com delay
+        if sec in ("doc", "calm", "end", "tension"):
+            notes = [n + 12 for n in chord[1:4]] + [chord[1] + 24]
+            step = BEAT / 2 if sec != "calm" else BEAT
+            for i in range(int(bar / step)):
+                if sec == "doc" and i % 4 == 3:
+                    continue
+                add(buf, pluck_syn(midi(notes[(i + k) % len(notes)])), t + i * step, 0.10, pan=math.sin(i) * 0.6)
+        # sonar
+        if sec in ("suspense", "calm") or k % 2 == 0:
+            add(buf, sonar(), t + 0.5, 0.05, pan=-0.5)
+        t += bar
+        k += 1
+    # delay estéreo ping-pong (eco submarino) no instrumental
+    d = int(BEAT * 0.75 * SR)
+    echo = np.zeros_like(buf)
+    echo[d:, 0] += buf[:-d, 1] * 0.38
+    echo[d:, 1] += buf[:-d, 0] * 0.38
+    echo[2 * d:, 0] += buf[:-2 * d, 0] * 0.18
+    echo[2 * d:, 1] += buf[:-2 * d, 1] * 0.18
+    from scipy.signal import fftconvolve
+    L = int(2.2 * SR)
+    tt = np.arange(L) / SR
+    ir = np.stack([rng.standard_normal(L), rng.standard_normal(L)], 1) * np.exp(-tt * 3.0)[:, None]
+    ir = lp(ir, 4000)
+    ir /= np.sqrt((ir ** 2).sum(axis=0))
+    mixd = buf + lp(echo, 3000)
+    wet = np.stack([fftconvolve(mixd[:, c], ir[:, c])[: len(mixd)] for c in (0, 1)], 1)
+    out = mixd * 0.7 + wet * 0.45 + lp(drums, 9000) * 0.9
+    return hp(out, 30)
+
+
 def ambience(D):
     n = int(D * SR) + SR
     w = rng.standard_normal((n, 2))
@@ -311,7 +437,7 @@ def main():
         "ffmpeg", "-v", "error", "-y", "-i", os.path.join(HERE, "narracao.wav"), "-i", p, "-filter_complex",
         "[0:a]aresample=48000,pan=stereo|c0=c0|c1=c0,highpass=f=70,acompressor=threshold=-20dB:ratio=3:attack=5:release=80,"
         "asplit=2[v][sc];"
-        "[1:a]volume=-19dB[b];"
+        "[1:a]volume=-17dB[b];"
         "[b][sc]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=600[bd];"
         "[v][bd]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[out]",
         "-map", "[out]", "-ar", "48000", os.path.join(OUT, "mix.wav")], check=True)
