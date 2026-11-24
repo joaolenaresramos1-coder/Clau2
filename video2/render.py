@@ -19,6 +19,7 @@ from gfx import W, H, FPS
 import math
 from gfx import ease, clamp
 from scenes_shark import SCENES, CUTS
+from overlays2 import draw_inserts
 
 OW, OH = 1920, 1080
 SC = OW / W
@@ -39,6 +40,7 @@ def scene_draw(ctx, t):
             fn(ctx, t)
             ctx.restore()
             break
+    draw_inserts(ctx, t)
 
 
 def draw_frame(ctx, t):
@@ -118,7 +120,7 @@ def full(nproc=4):
     with open(lst, "w") as f:
         for i in range(nproc):
             f.write(f"file 'part{i}.mp4'\n")
-    final = os.path.join(OUT, "tubarao_cabeca_chata.mp4")
+    final = os.path.join(OUT, "tubarao_cabeca_chata_v2.mp4")
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-i", MIX if os.path.exists(MIX) else AUDIO,
                     "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-shortest",
                     "-movflags", "+faststart", final], check=True)
