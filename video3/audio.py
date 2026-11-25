@@ -435,8 +435,8 @@ def main():
         "ffmpeg", "-v", "error", "-y", "-i", os.path.join(HERE, "narracao.wav"), "-i", p, "-filter_complex",
         "[0:a]aresample=48000,pan=stereo|c0=c0|c1=c0,highpass=f=70,acompressor=threshold=-20dB:ratio=3:attack=5:release=80,"
         "asplit=2[v][sc];"
-        "[1:a]volume=-17dB[b];"
-        "[b][sc]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=600[bd];"
+        "[1:a]volume=-9dB[b];"
+        "[b][sc]sidechaincompress=threshold=0.05:ratio=3:attack=40:release=500[bd];"
         "[v][bd]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[out]",
         "-map", "[out]", "-ar", "48000", os.path.join(OUT, "mix.wav")], check=True)
     print("ok", os.path.join(OUT, "mix.wav"))
