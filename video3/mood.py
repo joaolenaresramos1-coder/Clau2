@@ -16,7 +16,7 @@ import cairo  # noqa: E402
 from gfx import W, H, grain, rgba, circle, PARTS  # noqa: E402
 
 
-def grade(ctx, t, desat=0.45, dark=0.22, tint=(0.03, 0.14, 0.18), vig=0.85, particles=True):
+def grade(ctx, t, desat=0.30, dark=0.08, tint=(0.10, 0.32, 0.38), vig=0.45, particles=True):
     # 1) dessaturação: sobrepõe cinza com operador HSL 'saturation'
     ctx.save()
     ctx.set_operator(cairo.OPERATOR_HSL_SATURATION)
@@ -29,7 +29,7 @@ def grade(ctx, t, desat=0.45, dark=0.22, tint=(0.03, 0.14, 0.18), vig=0.85, part
     ctx.set_source_rgba(1 - dark * 0.6, 1 - dark * 0.35, 1 - dark * 0.25, 1.0)
     ctx.paint()
     ctx.set_operator(cairo.OPERATOR_SOFT_LIGHT)
-    ctx.set_source_rgba(*tint, 0.55)
+    ctx.set_source_rgba(*tint, 0.40)
     ctx.paint()
     ctx.restore()
     # 3) partículas em suspensão (primeiro plano, desfocadas)
@@ -44,12 +44,12 @@ def grade(ctx, t, desat=0.45, dark=0.22, tint=(0.03, 0.14, 0.18), vig=0.85, part
             ctx.arc(x, y, r * 4, 0, 2 * math.pi)
             ctx.fill()
     # 4) vinheta forte + granulação
-    g = cairo.RadialGradient(W / 2, H / 2, H * 0.28, W / 2, H / 2, H * 0.92)
+    g = cairo.RadialGradient(W / 2, H / 2, H * 0.40, W / 2, H / 2, H * 1.0)
     g.add_color_stop_rgba(0, 0, 0, 0, 0)
     g.add_color_stop_rgba(1, 0.0, 0.02, 0.03, vig)
     ctx.set_source(g)
     ctx.paint()
-    grain(ctx, 0.14, t)
+    grain(ctx, 0.08, t)
 
 
 def depth_fog(ctx, y_from, y_to, a=0.6, col=(0.02, 0.07, 0.09)):
