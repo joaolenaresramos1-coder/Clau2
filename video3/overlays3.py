@@ -17,8 +17,23 @@ CACHE = os.path.join(HERE, "out", "media_cache")
 
 # (início, fim, arquivo, crédito, rótulo, sobretítulo, zoom de, zoom até, foco x, foco y)
 INSERTS = [
+    (0.9, 6.3, "iss074e0526743.jpg", "Foto: NASA / ISS · Domínio público", None, "",
+     1.0, 1.25, 0.5, 0.5),
+    (14.5, 20.8, "isaribi.jpg", "Foto: miki mix / CC BY 2.0", None, "LÂMPADAS DE UM BARCO DE PESCA DE LULA", 1.0, 1.15,
+     0.5, 0.5),
+    (21.3, 26.8, "iss073e0688699.jpg", "Foto: NASA / ISS · Domínio público", None, "", 1.05, 1.3, 0.5, 0.5),
+    (66.0, 70.8, "jumbo.jpg", "Foto: runneralan2004 / CC BY 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
     (124.0, 133.0, "squid.jpg", "Imagem: NOAA/MBARI 2006 / Domínio público", "Dosidicus gigas",
      "UMA LULA-DE-HUMBOLDT DE VERDADE", 1.0, 1.15, 0.5, 0.5),
+    (133.3, 139.6, "sq_reid.jpg", "Foto: Julie Reid / CC BY 4.0", None, "", 1.0, 1.15, 0.5, 0.5),
+    (263.8, 270.5, "boats_hlit.jpg", "Foto: H.L.I.T. / CC BY 2.0", None, "BARCOS DE PESCA DE LULA COM AS LÂMPADAS",
+     1.0, 1.15, 0.5, 0.5),
+    (277.8, 282.0, "sq_vander.jpg", "Foto: Sula Vanderplank / CC BY 4.0", None, "", 1.0, 1.15, 0.5, 0.5),
+    (330.5, 338.8, "paita.jpg", "Foto: eutrophication&hypoxia / CC BY 2.0", None, "PAITA, PERU", 1.0, 1.15, 0.5, 0.5),
+    (573.2, 580.0, "iss075e0144232.jpg", "Foto: NASA / ISS · Domínio público", None, "", 1.0, 1.25, 0.5, 0.5),
+    (586.0, 594.5, "boats_yashima.jpg", "Foto: yashima / CC BY-SA 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
+    (595.3, 612.6, "elnino.mp4", "Vídeo: NASA Goddard · Domínio público", None, "",
+     1.0, 1.0, 0.5, 0.5),
 ]
 
 _IMG = {}
@@ -84,7 +99,7 @@ def draw_inserts(ctx, t):
         if a <= 0:
             continue
         p = clamp((t - t0) / (t1 - t0))
-        if fn.endswith((".webm", ".ogv")):
+        if fn.endswith((".webm", ".ogv", ".mp4")):
             frames = _video_frames(fn)
             idx = min(len(frames) - 1, int((t - t0) * 24) % len(frames))
             img = _load(frames[idx])
