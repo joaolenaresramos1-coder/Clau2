@@ -733,8 +733,6 @@ def w_answers(ctx, t):
 
 
 def u_answers(ctx, t):
-    if t < 406.8:  # vídeo real do gelo na tela
-        return
     marks = {"A": (402.3, 420, "x"), "B": (420, 430, "x"), "C": (430, 447, "v")}
     for i, (lt, nm, _) in enumerate(PANELS):
         x = W / 2 + (i - 1) * 370 - 165
@@ -743,7 +741,7 @@ def u_answers(ctx, t):
         s0 = marks[lt][0]
         if t > s0 + 1:
             (xmark if marks[lt][2] == "x" else check)(ctx, x + 310, 60, 14, appear(t, s0 + 1))
-    label(ctx, "A PIOR", W / 2, H * 0.22, t, 407, 420, 44, RED)
+    label(ctx, "A PIOR", W / 2, H * 0.22, t, 403.5, 420, 44, RED)
     label(ctx, "O FRIO CONCENTRA O VENENO NO LUGAR", W / 2, H * 0.90, t, 409, 420, 20, WHITE)
     label(ctx, "TAMBÉM NÃO — MAIS DANO AO TECIDO", W / 2, H * 0.22, t, 420.5, 430, 28, ORANGE)
     label(ctx, "ACERTOU", W / 2, H * 0.22, t, 431, 440, 44, GREEN)
@@ -826,9 +824,7 @@ def u_aid(ctx, t):
         return
     label(ctx, "SEM BACIA? GARRAFAS AO SOL, TORNEIRA DE QUIOSQUE", W / 2, H * 0.10, t, 486, 494, 18, WHITE)
     label(ctx, "RESPIRANDO? TONTA? PÁLIDA? SUANDO FRIO?", W / 2, H * 0.10, t, 494, 507, 18, WHITE)
-    label(ctx, "HOSPITAL: DOR · RAIO-X · ANTÍDOTO", W / 2, H * 0.10, t, 507, 510, 18, ORANGE)
-    if 479.4 < t < 483.8 or 488.8 < t < 493.2 or t > 507.4:  # vídeos reais na tela: só o letreiro de cima
-        return
+    label(ctx, "HOSPITAL: DOR · RAIO-X · ANTÍDOTO NOS CASOS GRAVES", W / 2, H * 0.10, t, 507, None, 18, ORANGE)
     big_title(ctx, [("~45 ", ORANGE, "black"), ("°C", WHITE, "light")], W * 0.80, H * 0.24, t, 466, None, 56)
     kicker(ctx, "QUENTE, MAS NÃO FERVENDO", W * 0.80, H * 0.30, t, 466.5, None, 15, WHITE)
     label(ctx, "TESTE COM A SUA MÃO, NÃO COM O PÉ DELA", W * 0.72, H * 0.44, t, 474.5, 486, 18, YELLOW)
