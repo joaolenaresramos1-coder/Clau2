@@ -13,20 +13,45 @@ from gfx import W, H, WHITE, ORANGE, SOFT, appear, window, ease, clamp, text, ki
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MEDIA = os.path.join(HERE, "media")
+MIX = os.path.join(HERE, "mix")
 CACHE = os.path.join(HERE, "out", "media_cache")
 
 # (início, fim, arquivo, crédito, rótulo, sobretítulo, zoom de, zoom até, foco x, foco y)
 INSERTS = [
-    (-1.0, 7.6, "coral_0.jpg", "Foto: U.S. Geological Survey · Domínio público", None, "", 1.0, 1.15, 0.5, 0.5),
+    (-1.0, 7.6, "m2164.mp4@4", "Vídeo: Mixkit", None, "", 1.0, 1.08, 0.5, 0.5),
+    (7.6, 13.4, "m4418.mp4@6", "Vídeo: Mixkit", None, "", 1.0, 1.06, 0.5, 0.5),
+    (13.4, 19.2, "m1224.mp4@2", "Vídeo: Mixkit", None, "", 1.0, 1.06, 0.5, 0.5),
+    (19.2, 24.6, "m10051.mp4@5", "Vídeo: Mixkit", None, "", 1.0, 1.06, 0.5, 0.5),
     (57.0, 62.8, "stonefish_2.jpg", "Foto: zsispeo / CC BY-SA 2.0", None, "CONSEGUE ACHAR O PEIXE?", 1.0, 1.25, 0.5,
      0.55),
     (82.5, 88.0, "stonefish_0.jpg", "Foto: walknboston / CC BY 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
+    (113.8, 120.8, "m32286.mp4@1", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
     (138.2, 144.0, "synanceia_3.jpg", "Foto: Dan Schofield / CC BY 4.0", None, "", 1.0, 1.15, 0.5, 0.5),
     (147.0, 151.0, "synanceia_1.jpg", "Foto: Tim Evanson / CC BY-SA 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
+    (151.4, 157.8, "m4020.mp4@3", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
     (165.0, 175.5, "stonefish_1.jpg", "Foto: prilfish / CC BY 2.0", None, "UM PEIXE-PEDRA ESCONDIDO PERTO DE UMA MOREIA",
      1.0, 1.2, 0.6, 0.5),
+    (239.6, 246.0, "m4767.mp4@1", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
+    (271.3, 277.2, "m49226.mp4@2", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
+    (294.3, 300.3, "m44397.mp4@4", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
+    (300.3, 304.5, "m30258.mp4@6", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
     (304.5, 310.0, "synanceia_2.jpg", "Foto: B. P. White / CC BY-SA 4.0", None, "", 1.0, 1.15, 0.5, 0.5),
+    (310.3, 317.5, "m48410.mp4@3", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
+    (230.6, 233.6, "m4406.mp4@2", "Vídeo: Mixkit", None, "CONTRA TUBARÕES...", 1.0, 1.06, 0.5, 0.5),
+    (233.6, 236.4, "m48366.mp4@1", "Vídeo: Mixkit", None, "...E RAIAS", 1.0, 1.06, 0.5, 0.5),
+    (338.3, 344.6, "m4767.mp4@4", "Vídeo: Mixkit", None, "", 1.0, 1.08, 0.5, 0.5),
+    (353.3, 359.6, "m20482.mp4@3", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
+    (402.4, 406.8, "m32438.mp4@1", "Vídeo: Mixkit", None, "GELO?", 1.0, 1.06, 0.5, 0.5),
+    (462.6, 469.0, "m21764.mp4@1", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
+    (479.2, 484.0, "m2771.mp4@1", "Vídeo: Mixkit", None, "VÁ COMPLETANDO A ÁGUA QUENTE", 1.0, 1.06, 0.5, 0.5),
+    (488.6, 493.4, "m28794.mp4@1", "Vídeo: Mixkit", None, "", 1.0, 1.06, 0.5, 0.5),
+    (507.2, 510.2, "m5959.mp4@3", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
+    (510.2, 513.4, "m33645.mp4@2", "Vídeo: Mixkit", None, "RAIO-X: RESTOS DE ESPINHO", 1.0, 1.06, 0.5, 0.5),
+    (513.4, 519.8, "m29933.mp4@2", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
+    (540.4, 548.5, "m22400.mp4@3", "Vídeo: Mixkit", None, "", 1.0, 1.06, 0.5, 0.5),
+    (556.5, 562.8, "m4465.mp4@0", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
     (566.5, 573.5, "stonefish_3.jpg", "Foto: 4nitsirk / CC BY-SA 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
+    (578.6, 584.8, "m27610.mp4@4", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
 ]
 
 _IMG = {}
@@ -46,18 +71,21 @@ def _load(path):
     return _IMG[path]
 
 
-def _video_frames(name):
-    d = os.path.join(CACHE, name + "_frames")
+def _video_frames(name, ss=0.0, dur=12.0):
+    d = os.path.join(CACHE, f"{name}_{ss:.1f}_frames")
     if not os.path.isdir(d):
         os.makedirs(d, exist_ok=True)
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", os.path.join(MEDIA, name), "-vf", "fps=24,scale=1280:-2",
-                        os.path.join(d, "%05d.png")], check=True)
+        src = os.path.join(MIX, name) if os.path.exists(os.path.join(MIX, name)) else os.path.join(MEDIA, name)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(ss), "-t", str(dur + 0.5), "-i", src, "-vf",
+                        "fps=24,scale=1280:-2", os.path.join(d, "%05d.png")], check=True)
     return sorted(glob.glob(os.path.join(d, "*.png")))
 
 
 def available():
-    return [i for i in INSERTS if os.path.exists(os.path.join(MEDIA, i[2])) and
-            os.path.getsize(os.path.join(MEDIA, i[2])) > 20000]
+    def path(fn):
+        fn = fn.partition("@")[0]
+        return os.path.join(MIX, fn) if os.path.exists(os.path.join(MIX, fn)) else os.path.join(MEDIA, fn)
+    return [i for i in INSERTS if os.path.exists(path(i[2])) and os.path.getsize(path(i[2])) > 20000]
 
 
 ACTIVE = None
@@ -92,8 +120,9 @@ def draw_inserts(ctx, t):
         if a <= 0:
             continue
         p = clamp((t - t0) / (t1 - t0))
-        if fn.endswith((".webm", ".ogv", ".mp4")):
-            frames = _video_frames(fn)
+        if ".mp4" in fn or fn.endswith((".webm", ".ogv")):
+            vname, _, ss = fn.partition("@")
+            frames = _video_frames(vname, float(ss or 0), t1 - t0)
             idx = min(len(frames) - 1, int((t - t0) * 24) % len(frames))
             img = _load(frames[idx])
         else:

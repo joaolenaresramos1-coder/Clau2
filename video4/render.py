@@ -32,9 +32,9 @@ def scene_draw(ctx, t):
     for s, e, world, ui in SCENES:
         if s <= t < e:
             p = (t - s) / max(1.0, min(e, 615) - s)
-            z = 1.0 + 0.05 * ease(p)
-            dx = math.sin(t * 0.11 + s) * 8
-            dy = math.cos(t * 0.09 + s) * 5
+            z = 1.0 + 0.09 * ease(p)
+            dx = math.sin(t * 0.13 + s) * 14
+            dy = math.cos(t * 0.11 + s) * 8
             ctx.save()
             ctx.translate(W / 2 + dx, H / 2 + dy)
             ctx.scale(z, z)
@@ -124,7 +124,7 @@ def full(nproc=4):
     with open(lst, "w") as f:
         for i in range(nproc):
             f.write(f"file 'part{i}.mp4'\n")
-    final = os.path.join(OUT, "peixe_pedra_v2.mp4")
+    final = os.path.join(OUT, "peixe_pedra_v3.mp4")
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-i", MIX if os.path.exists(MIX) else AUDIO,
                     "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-shortest",
                     "-movflags", "+faststart", final], check=True)

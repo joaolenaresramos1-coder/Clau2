@@ -305,3 +305,139 @@ def walker_pose(path, t, stride_px=120.0):
         return rig.p_stand(t)
     ph = path.phase(t, stride_px * 2)
     return rig.p_walk(ph / 0.85, 1.0)
+
+
+# ------------------------------------------------------------------ pé humano detalhado (vista lateral)
+def foot(ctx, x, y, s, facing=1, a=1.0, swell=0.0, bruise=0.0, leg_to=None, skin=None, seed=3):
+    """Pé de perfil a partir de referência anatômica: calcanhar arredondado, arco plantar, bola do pé,
+    dedões com unhas e tornozelo com maléolo. (x, y) = ponto de apoio sob a bola do pé; s ≈ comprimento/240.
+    swell 0..1 incha o dorso; bruise 0..1 escurece em volta da picada (na sola, sob a bola do pé).
+    leg_to = (x, y) do joelho/topo para desenhar a canela até lá."""
+    skin = skin or SKIN
+    sw = 1 + 0.25 * swell
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.scale(facing * s, s)
+    # canela (até o ponto pedido, em coordenadas da tela -> converte para locais)
+    if leg_to is not None:
+        lx = (leg_to[0] - x) / (facing * s)
+        ly = (leg_to[1] - y) / s
+        limb(ctx, [(-150, -95), (lx, ly)], 70 * sw, skin, a)
+    pts = [(-205, -12), (-215, -40), (-200, -80), (-170, -105), (-140, -118),  # calcanhar -> tornozelo atrás
+           (-110, -125), (-80, -118), (-40, -98 * sw), (0, -78 * sw), (40, -58 * sw), (70, -44), (95, -36),
+           (105, -30), (108, -18), (100, -6), (80, -2), (60, 0), (20, 0), (-20, -2), (-60, -10),  # dedos e sola
+           (-100, -14), (-140, -6), (-180, 0)]
+    _smooth_path(ctx, pts)
+    ink(ctx, skin, a, 2.6)
+    # sombra do arco plantar e volume
+    ctx.save()
+    _smooth_path(ctx, pts)
+    ctx.clip()
+    g = cairo.LinearGradient(0, -130, 0, 0)
+    g.add_color_stop_rgba(0, 1, 1, 1, 0.12 * a)
+    g.add_color_stop_rgba(1, 0, 0, 0, 0.18 * a)
+    ctx.set_source(g)
+    ctx.paint()
+    if bruise > 0:
+        for k, (bx, by, r) in enumerate(((-10, -12, 70), (20, -20, 50), (-50, -25, 55))):
+            gg = cairo.RadialGradient(bx, by, 0, bx, by, r * (0.6 + 0.7 * bruise))
+            gg.add_color_stop_rgba(0, 0.35, 0.12, 0.30, 0.75 * bruise * a)
+            gg.add_color_stop_rgba(1, 0.35, 0.12, 0.30, 0)
+            ctx.set_source(gg)
+            ctx.paint()
+    ctx.restore()
+    # maléolo (osso do tornozelo)
+    ellipse_path(ctx, -128, -98, 13, 10)
+    rgba(ctx, (0.80, 0.60, 0.50), 0.6 * a)
+    ctx.fill()
+    # dedos: separação e unhas
+    for k, (tx, ty, r) in enumerate(((100, -20, 12), (82, -16, 10), (66, -12, 9))):
+        if k:
+            ctx.move_to(tx + 6, ty - r)
+            ctx.curve_to(tx + 2, ty - 2, tx + 4, ty + 4, tx + 8, ty + 10)
+            rgba(ctx, INK, 0.45 * a)
+            ctx.set_line_width(1.4)
+            ctx.stroke()
+    ctx.move_to(96, -34)
+    ctx.curve_to(104, -36, 108, -30, 106, -24)
+    ctx.curve_to(102, -24, 96, -27, 96, -34)
+    rgba(ctx, (0.96, 0.86, 0.82), a)
+    ctx.fill_preserve()
+    rgba(ctx, INK, 0.6 * a)
+    ctx.set_line_width(1.2)
+    ctx.stroke()
+    # tendão de Aquiles
+    ctx.move_to(-190, -60)
+    ctx.curve_to(-178, -90, -165, -110, -158, -125)
+    rgba(ctx, INK, 0.3 * a)
+    ctx.set_line_width(1.6)
+    ctx.stroke()
+    ctx.restore()
+
+
+def spine_detail(ctx, t, cx, base_y, length, press, a=1.0, venom_flow=0.0):
+    """Espinho dorsal em corte, modelado a partir de ilustrações anatômicas de Synanceia:
+    espinho afilado e levemente curvo, com um sulco de cada lado; uma glândula de veneno em forma de gota
+    presa a cada lado, na metade de baixo; bainha de pele (tegumento) envolvendo tudo.
+    press 0..1: a bainha é empurrada para baixo e espreme as glândulas."""
+    L = length
+    tipx, tipy = cx + L * 0.06, base_y - L
+    # espinho (afilado, curvo)
+    ctx.move_to(cx - L * 0.035, base_y)
+    ctx.curve_to(cx - L * 0.03, base_y - L * 0.5, cx - L * 0.005, base_y - L * 0.85, tipx, tipy)
+    ctx.curve_to(cx + L * 0.02, base_y - L * 0.85, cx + L * 0.035, base_y - L * 0.5, cx + L * 0.035, base_y)
+    ctx.close_path()
+    ink(ctx, (0.93, 0.90, 0.84), a, 2.2)
+    # sulcos
+    for sgn in (-1, 1):
+        ctx.move_to(cx + sgn * L * 0.012, base_y - L * 0.10)
+        ctx.curve_to(cx + sgn * L * 0.012, base_y - L * 0.5, cx + sgn * L * 0.006 + L * 0.02, base_y - L * 0.80,
+                     tipx - L * 0.004, tipy + L * 0.06)
+        rgba(ctx, (0.55, 0.50, 0.45), a)
+        ctx.set_line_width(2)
+        ctx.stroke()
+    # glândulas de veneno (gotas), espremidas pela bainha
+    sq = 1 - 0.55 * press
+    gy = base_y - L * (0.32 - 0.10 * press)
+    for sgn in (-1, 1):
+        gx = cx + sgn * (L * 0.035 + L * 0.045 * sq)
+        ctx.move_to(gx, gy - L * 0.16)
+        ctx.curve_to(gx + sgn * L * 0.06 * sq, gy - L * 0.10, gx + sgn * L * 0.06 * sq, gy + L * 0.06, gx, gy + L * 0.08)
+        ctx.curve_to(gx - sgn * L * 0.03 * sq, gy + L * 0.04, gx - sgn * L * 0.03 * sq, gy - L * 0.10,
+                     gx, gy - L * 0.16)
+        g = cairo.RadialGradient(gx, gy, 2, gx, gy, L * 0.12)
+        g.add_color_stop_rgba(0, 0.70, 0.92, 0.45, a)
+        g.add_color_stop_rgba(1, 0.35, 0.60, 0.25, a)
+        ctx.set_source(g)
+        ctx.fill_preserve()
+        rgba(ctx, INK, a)
+        ctx.set_line_width(2)
+        ctx.stroke()
+    # bainha de pele (desce com a pressão)
+    top = base_y - L * lerp(0.80, 0.30, press)
+    ctx.move_to(cx - L * 0.14, base_y + 4)
+    ctx.curve_to(cx - L * 0.13, base_y - L * 0.3, cx - L * 0.06, top + L * 0.05, cx, top)
+    ctx.curve_to(cx + L * 0.06, top + L * 0.05, cx + L * 0.13, base_y - L * 0.3, cx + L * 0.14, base_y + 4)
+    ctx.close_path()
+    g = cairo.LinearGradient(cx - L * 0.14, 0, cx + L * 0.14, 0)
+    g.add_color_stop_rgba(0, 0.45, 0.36, 0.38, 0.55 * a)
+    g.add_color_stop_rgba(0.5, 0.62, 0.52, 0.52, 0.35 * a)
+    g.add_color_stop_rgba(1, 0.45, 0.36, 0.38, 0.55 * a)
+    ctx.set_source(g)
+    ctx.fill_preserve()
+    rgba(ctx, INK, 0.8 * a)
+    ctx.set_line_width(2)
+    ctx.stroke()
+    # dobras da bainha amontoada
+    for k in range(int(press * 4)):
+        yy = top + L * 0.05 + k * L * 0.05
+        line(ctx, cx - L * 0.07, yy, cx + L * 0.07, yy + 3, INK, 0.35 * a, 1.5)
+    # veneno subindo pelos sulcos até a ponta
+    if venom_flow > 0:
+        for k in range(10):
+            ph = (t * 1.1 + k / 10) % 1
+            for sgn in (-1, 1):
+                yy = lerp(gy - L * 0.1, tipy + L * 0.05, ph)
+                f = (base_y - yy) / L
+                xx = cx + sgn * L * 0.012 * (1 - f) + (tipx - cx) * f ** 2
+                circle(ctx, xx, yy, 3.5, (0.55, 0.95, 0.35), a * venom_flow * (0.4 + 0.6 * (1 - ph)))

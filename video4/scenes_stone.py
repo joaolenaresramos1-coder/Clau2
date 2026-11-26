@@ -43,8 +43,25 @@ def underwater_close(ctx, t, floor=H * 0.80, murk=0.0):
     ctx.rectangle(0, floor, W, H - floor)
     ink(ctx, (0.78, 0.72, 0.56), 1, 2)
     rnd = random.Random(8)
+    for i in range(14):
+        sx = rnd.uniform(0, W)
+        hh = rnd.uniform(40, 110)
+        for j in range(3):
+            ctx.move_to(sx + j * 6, floor + 2)
+            ctx.curve_to(sx + j * 6 + 10 * math.sin(t * 1.3 + i), floor - hh * 0.4,
+                         sx + j * 6 - 10 * math.sin(t * 1.1 + i + j), floor - hh * 0.7,
+                         sx + j * 6 + 14 * math.sin(t * 0.9 + i + j), floor - hh)
+            rgba(ctx, (0.30, 0.50, 0.32), 0.8)
+            ctx.set_line_width(4)
+            ctx.stroke()
     for i in range(8):
         rock(ctx, rnd.uniform(0, W), floor + 6, rnd.uniform(70, 140), 30 + i)
+    for i in range(5):
+        d = 1 if i % 2 else -1
+        fx_ = (rnd.uniform(0, W) + d * t * rnd.uniform(30, 70)) % (W + 160) - 80
+        fy_ = rnd.uniform(H * 0.15, floor - 60) + math.sin(t * 1.5 + i) * 10
+        fish(ctx, fx_, fy_, rnd.uniform(0.35, 0.6), t + i, c=[(0.95, 0.75, 0.30), (0.45, 0.70, 0.90),
+                                                             (0.90, 0.50, 0.40)][i % 3], flip=d)
     for i in range(40):
         circle(ctx, rnd.uniform(0, W), (rnd.uniform(0, H) - t * 4) % H, rnd.uniform(1, 2.2), WHITE, 0.25)
 
@@ -89,19 +106,18 @@ def w_step(ctx, t):
     stonefish(ctx, W * 0.50, floor + 10, 640, t, camo=1.0 - 0.2 * spn, eyes=0.0, spines=spn, seed=4, breathe=False,
               bury=1.0)
     # perna e pé descendo (vem de cima, peso do corpo)
-    fy = kf(t, [(28, H * 0.05), (31.5, H * 0.30), (33.2, H * 0.47)]) + (6 if t > 33.2 else 0)
-    limb(ctx, [(fx - 40, -40), (fx - 10, fy - 30)], 70, SKIN)
-    ellipse_path(ctx, fx + 30, fy, 95, 36)
-    ink(ctx, SKIN, 1, 2.5)
+    back_y = sf_point(W * 0.50, floor + 10, 640, 0.0, -0.46)[1]
+    fy = kf(t, [(28, H * 0.02), (31.5, back_y - 140), (33.2, back_y + 4)]) + (5 if t > 33.2 else 0)
+    foot(ctx, fx + 10, fy, 1.05, facing=1, leg_to=(fx - 220, -60), bruise=appear(t, 40, 6) * 0.6)
     if t > 36:
         k = appear(t, 36.2, 0.4)
-        circle(ctx, fx + 30, fy + 30, 22 * k, RED, 0.6)
+        circle(ctx, fx + 10, fy - 4, 14 * k, RED, 0.6)
     if 36.0 < t < 37.0:
         rgba(ctx, (1, 0.9, 0.85), 0.5 * (1 - (t - 36)))
         ctx.paint()
     if t > 38:
         k = appear(t, 38, 3) * (0.6 + 0.4 * math.sin(t * 6))
-        circle(ctx, fx + 30, fy, 120 + 60 * appear(t, 43, 6), RED, 0.25 * k)
+        circle(ctx, fx - 40, fy - 60, 120 + 60 * appear(t, 43, 6), RED, 0.22 * k)
 
 
 def u_step(ctx, t):
@@ -280,17 +296,91 @@ def w_spines(ctx, t):
         stonefish(ctx, W * 0.50, H * 0.88, 700, t, camo=0.3, eyes=1, seed=4,
                   spines=window(t, 194.5, 199, 0.8))
         if t > 194:
-            fy = kf(t, [(194, -100), (195.5, H * 0.18)])
-            ellipse_path(ctx, W * 0.45, fy, 260, 50)
-            ink(ctx, SKIN, 0.9, 2.5)
+            fy = kf(t, [(194, -150), (195.6, H * 0.40), (198, H * 0.42)]) + 2 * math.sin(t * 30) * window(t, 195.5, 197)
+            foot(ctx, W * 0.47, fy, 1.2, facing=1, leg_to=(W * 0.22, fy - 520))
         return
     press = kf(t, [(199, 0.0), (205, 0.0), (209, 1.0), (222, 1.0), (224, 0.0)])
-    spine_close(ctx, t, W * 0.36, H * 0.95, press)
-    if 205 <= t < 224:
-        fy = H * 0.95 - 360 - 30 + press * 180
-        limb(ctx, [(W * 0.05, -60), (W * 0.20, fy - 60)], 90, SKIN)
-        ellipse_path(ctx, W * 0.36, fy - 40, 210, 42)
-        ink(ctx, SKIN, 1, 2.5)
+    # foco: escurece o fundo (corte anatômico em close)
+    ctx.rectangle(-W, -H, 3 * W, 3 * H)
+    rgba(ctx, (0.03, 0.07, 0.09), 0.45)
+    ctx.fill()
+    cx, base_y, L = W * 0.36, H * 0.84, 380
+    # pele do dorso do peixe: faixa grossa, verrugosa, manchada (corte)
+    def skin_path():
+        ctx.move_to(-W, H * 2)
+        ctx.line_to(-W, base_y + 18)
+        for i in range(0, 61):
+            x = -W + i * (3 * W / 60)
+            y = base_y + 10 * math.sin(x * 0.012) + 6 * math.sin(x * 0.041 + 1) - 22 * math.exp(-((x - cx) / 70) ** 2)
+            ctx.line_to(x, y)
+        ctx.line_to(2 * W, H * 2)
+        ctx.close_path()
+    skin_path()
+    g = cairo.LinearGradient(0, base_y - 20, 0, H)
+    g.add_color_stop_rgb(0, 0.46, 0.40, 0.38)
+    g.add_color_stop_rgb(0.35, 0.58, 0.40, 0.40)  # carne
+    g.add_color_stop_rgb(1, 0.40, 0.26, 0.28)
+    ctx.set_source(g)
+    ctx.fill_preserve()
+    rgba(ctx, INK, 1)
+    ctx.set_line_width(3)
+    ctx.stroke()
+    ctx.save()
+    skin_path()
+    ctx.clip()
+    rnd = random.Random(11)
+    for k in range(70):  # verrugas e manchas na camada de pele
+        x = rnd.uniform(-W * 0.2, W * 1.2)
+        y = base_y + rnd.uniform(-6, 30)
+        r = rnd.uniform(4, 13)
+        col = rnd.choice([(0.38, 0.33, 0.30), (0.55, 0.50, 0.42), (0.62, 0.48, 0.34), (0.42, 0.46, 0.38)])
+        circle(ctx, x, y, r, col, 0.8)
+    # fibras musculares embaixo
+    for k in range(12):
+        yy = base_y + 50 + k * 9
+        line(ctx, -W, yy, 2 * W, yy + 6 * math.sin(k), (0.30, 0.18, 0.20), 0.25, 1.5)
+    ctx.restore()
+    vf = appear(t, 213, 1.0) * (1 - appear(t, 222, 1))
+    spine_detail(ctx, t, cx, base_y, L, press, venom_flow=vf)
+    if 204 <= t < 225:
+        tip_y = base_y - L
+        # o pé desce (com tremor quando o peso entra) e o espinho penetra a sola
+        shake = 3 * math.sin(t * 40) * window(t, 206, 210, 0.5)
+        lift = kf(t, [(204, -260), (206, -40), (209, 0), (222, 0), (224.5, -300)])
+        fy = tip_y + press * 70 + lift + shake
+        foot(ctx, cx + 30, fy, 1.3, facing=1, leg_to=(W * 0.08, fy - 520))
+        if press > 0.3:
+            pa = (press - 0.3) / 0.7
+            # ponta do espinho dentro do pé (translúcida através da pele)
+            ctx.move_to(cx + L * 0.06 - 9, fy)
+            ctx.line_to(cx + L * 0.06 + 1, tip_y)
+            ctx.line_to(cx + L * 0.06 + 9, fy)
+            rgba(ctx, (0.93, 0.90, 0.84), 0.55 * pa)
+            ctx.fill()
+            # dor: anéis pulsando no ponto de entrada + veneno espalhando no pé
+            for k in range(3):
+                ph = (t * 1.4 + k / 3) % 1
+                ctx.arc(cx + L * 0.06, fy - 10, 10 + ph * 90, 0, 2 * math.pi)
+                rgba(ctx, (0.95, 0.35, 0.25), pa * (1 - ph) * 0.8)
+                ctx.set_line_width(3)
+                ctx.stroke()
+            if vf > 0:
+                g = cairo.RadialGradient(cx + L * 0.06, fy - 20, 4, cx + L * 0.06, fy - 20, 40 + 80 * vf)
+                g.add_color_stop_rgba(0, 0.55, 0.95, 0.35, 0.55 * vf)
+                g.add_color_stop_rgba(1, 0.55, 0.95, 0.35, 0)
+                ctx.set_source(g)
+                ctx.arc(cx + L * 0.06, fy - 20, 40 + 80 * vf, 0, 2 * math.pi)
+                ctx.fill()
+        # areia/partículas soltas pela pisada
+        if 208 <= t < 212:
+            rnd = random.Random(5)
+            for k in range(24):
+                ph = (t - 208) / 4
+                ang = rnd.uniform(math.pi * 1.05, math.pi * 1.95)
+                sp = rnd.uniform(60, 220)
+                x = cx + math.cos(ang) * sp * ph * 1.5
+                y = base_y - 10 + math.sin(ang) * sp * ph + 120 * ph * ph
+                circle(ctx, x, y, rnd.uniform(1.5, 3.5), (0.85, 0.80, 0.70), 0.8 * (1 - ph))
 
 
 def u_spines(ctx, t):
@@ -298,11 +388,12 @@ def u_spines(ctx, t):
         label(ctx, "13 ESPINHOS · NORMALMENTE DEITADOS", W / 2, H * 0.10, t, 189.3, 194.5, 24, WHITE)
         label(ctx, "PRESSÃO DE CIMA: ELES SE LEVANTAM", W / 2, H * 0.10, t, 194.5, None, 24, ORANGE)
         return
-    callout(ctx, W * 0.36 + 26, H * 0.95 - 170, 30, W * 0.66, H * 0.30, "BOLSA DE VENENO (2 POR ESPINHO)",
+    callout(ctx, W * 0.36 + 34, H * 0.84 - 120, 30, W * 0.66, H * 0.30, "BOLSA DE VENENO (2 POR ESPINHO)",
             window(t, 201, 207))
-    callout(ctx, W * 0.36 + 30, H * 0.95 - 200, 26, W * 0.66, H * 0.48, "BAINHA DE PELE, COMO UMA LUVA",
+    callout(ctx, W * 0.36 + 36, H * 0.84 - 60, 26, W * 0.66, H * 0.48, "BAINHA DE PELE, COMO UMA LUVA",
             window(t, 205, 212))
-    callout(ctx, W * 0.36 + 4, H * 0.95 - 300, 18, W * 0.66, H * 0.20, "DOIS SULCOS", window(t, 213, 220))
+    callout(ctx, W * 0.36 + 10, H * 0.84 - 200, 18, W * 0.66, H * 0.20, "DOIS SULCOS", window(t, 213, 220))
+    label(ctx, "PELE DO DORSO DO PEIXE (CORTE)", W * 0.80, H * 0.93, t, 200, 224, 16, WHITE)
     label(ctx, "QUANTO MAIS FORTE O PASSO, MAIS VENENO", W / 2, H * 0.08, t, 217, 223, 22, ORANGE)
     if t > 223:
         big_title(ctx, [("É UMA ", WHITE, "black"), ("DEFESA", ORANGE, "light")], W * 0.70, H * 0.40, t, 230, None,
@@ -315,32 +406,77 @@ def u_spines(ctx, t):
 def w_venom(ctx, t):
     studio(ctx, t, H * 0.92)
     if t < 262:
-        # células com buracos e nervo disparando
+        # células com buracos (tremendo, vazando) e nervo disparando
         for i in range(12):
-            x = W * 0.16 + (i % 6) * 90
-            y = H * 0.42 + (i // 6) * 100
+            x = W * 0.16 + (i % 6) * 90 + 2 * math.sin(t * 9 + i)
+            y = H * 0.42 + (i // 6) * 100 + 2 * math.cos(t * 7 + i * 2)
             hole = appear(t, 243.5 + i * 0.25, 0.4)
-            circle(ctx, x, y, 38, (0.90, 0.55, 0.55), 1 - 0.4 * hole)
-            circle(ctx, x + 6, y - 5, 12 * hole, (0.05, 0.08, 0.10))
+            r = 38 * (1 + 0.04 * math.sin(t * 3 + i)) * (1 - 0.12 * hole)
+            circle(ctx, x, y, r, (0.90, 0.55, 0.55), 1 - 0.4 * hole)
+            circle(ctx, x - 8, y + 6, 9, (0.62, 0.30, 0.34), 0.8 - 0.4 * hole)  # núcleo
+            circle(ctx, x + 6, y - 5, 12 * hole * (1 + 0.15 * math.sin(t * 6 + i)), (0.05, 0.08, 0.10))
+            if hole > 0:  # conteúdo vazando pelo buraco
+                for k in range(4):
+                    ph = (t * 0.8 + k / 4 + i * 0.13) % 1
+                    circle(ctx, x + 6 + ph * 40 * math.cos(i + k), y - 5 - ph * 40 * math.sin(i + k * 2),
+                           3 * (1 - ph), (0.95, 0.70, 0.70), hole * (1 - ph))
+        # proteínas do veneno (verdes) chegando e grudando
+        for k in range(18):
+            ph = min(1, max(0, (t - 241 - k * 0.15) / 2.5))
+            tx = W * 0.16 + (k % 6) * 90 + 6
+            ty = H * 0.42 + ((k // 6) % 2) * 100 - 30
+            sx, sy = W * 0.5 + 300 * math.cos(k), -40
+            circle(ctx, lerp(sx, tx, ease(ph)), lerp(sy, ty, ease(ph)), 5, (0.55, 0.95, 0.35), 0.9 * (1 - appear(t, 247, 1)))
         ctx.move_to(W * 0.62, H * 0.45)
         for k in range(60):
             xx = W * 0.62 + k * 7
-            yy = H * 0.45 + (math.sin(k * 1.7 + t * 25) * 26 if t > 249 else 0)
+            spike = math.exp(-((k - (t * 30) % 80) / 3) ** 2) * 60
+            yy = H * 0.45 + ((math.sin(k * 1.7 + t * 25) * 18 - spike) if t > 249 else 0)
             ctx.line_to(xx, yy)
         rgba(ctx, YELLOW, 1)
         ctx.set_line_width(3)
         ctx.stroke()
+        if t > 249:  # sinais de dor correndo para o cérebro
+            for k in range(5):
+                ph = (t * 1.3 + k / 5) % 1
+                circle(ctx, W * 0.62 + ph * 420, H * 0.45 - 10, 6, RED, 0.9 * math.sin(ph * math.pi))
         return
-    # o pé inchando e escurecendo
+    # o pé inchando, latejando e escurecendo; a dor sobe pela perna
     sw = appear(t, 262, 3)
+    beat = 0.5 + 0.5 * math.sin(t * 2 * math.pi * 1.2)
     y = H * 0.66
-    limb(ctx, [(-60, y - 30), (W * 0.40, y - 10)], 100 + 30 * sw, SKIN)
-    ellipse_path(ctx, W * 0.48, y, 140 + 30 * sw, 60 + 25 * sw)
-    ink(ctx, SKIN, 1, 2.5)
-    blob(ctx, W * 0.49, y + 14, 40 + 60 * sw, 18 + 22 * sw, 5, amp=0.25)
-    rgba(ctx, (0.40, 0.18, 0.40), 0.55 * sw)
-    ctx.fill()
-    circle(ctx, W * 0.50, y + 22, 5, (0.15, 0.05, 0.10), 0.9 * sw)
+    fx, fy = W * 0.40, y + 60
+    shake = 1.5 * math.sin(t * 31) * sw
+    foot(ctx, fx + shake, fy, 1.6, facing=1, swell=sw * (0.9 + 0.1 * beat), bruise=sw * (0.55 + 0.15 * beat),
+         leg_to=(W * 0.02, y - 260))
+    pain_fx(ctx, t, fx + 50, fy - 14, sw, (W * 0.02 + 40, y - 230), appear(t, 263, 10))
+
+
+def pain_fx(ctx, t, x, y, a, up_to=None, spread=1.0):
+    """Dor: anéis pulsando no ponto da picada, raios e ondas vermelhas subindo pela perna."""
+    if a <= 0:
+        return
+    for k in range(3):
+        ph = (t * 1.2 + k / 3) % 1
+        ctx.arc(x, y, 12 + ph * 110, 0, 2 * math.pi)
+        rgba(ctx, (0.95, 0.30, 0.25), a * (1 - ph) * 0.7)
+        ctx.set_line_width(3)
+        ctx.stroke()
+    for k in range(8):  # raios de dor
+        ang = k * math.pi / 4 + 0.2 * math.sin(t * 3)
+        r0 = 30 + 6 * math.sin(t * 8 + k)
+        line(ctx, x + math.cos(ang) * r0, y + math.sin(ang) * r0, x + math.cos(ang) * (r0 + 22),
+             y + math.sin(ang) * (r0 + 22), (1.0, 0.55, 0.30), a * 0.6 * (0.5 + 0.5 * math.sin(t * 6 + k)), 3)
+    if up_to is not None and spread > 0:
+        for k in range(4):  # ondas subindo pela perna
+            ph = ((t * 0.7 + k / 4) % 1) * spread
+            px, py = lerp(x, up_to[0], ph), lerp(y, up_to[1], ph)
+            g = cairo.RadialGradient(px, py, 2, px, py, 60)
+            g.add_color_stop_rgba(0, 0.95, 0.25, 0.20, 0.45 * a * (1 - ph / max(spread, 0.01) * 0.6))
+            g.add_color_stop_rgba(1, 0.95, 0.25, 0.20, 0)
+            ctx.set_source(g)
+            ctx.arc(px, py, 60, 0, 2 * math.pi)
+            ctx.fill()
 
 
 def u_venom(ctx, t):
@@ -526,31 +662,79 @@ def u_choice(ctx, t):
 def w_answers(ctx, t):
     studio(ctx, t, H * 0.92)
     y = H * 0.62
-    limb(ctx, [(-60, y - 20), (W * 0.40, y - 6)], 100, SKIN)
-    ellipse_path(ctx, W * 0.48, y, 140, 60)
-    ink(ctx, SKIN, 1, 2.5)
-    vx, vy = W * 0.50, y + 20
-    if t < 420:  # gelo: vasos fecham, veneno fica concentrado
+    foot(ctx, W * 0.42, y + 60, 1.5, facing=1, swell=0.5, bruise=0.4, leg_to=(W * 0.02, y - 220))
+    vx, vy = W * 0.42, y + 40
+    if t < 420:  # gelo: cubos caem e se empilham; vasos fecham; veneno fica concentrado
         k = appear(t, 409, 2)
-        for i in range(4):
-            rrect(ctx, W * 0.40 + i * 40, y - 110, 34, 34, 6)
-            ink(ctx, (0.85, 0.95, 1.0), appear(t, 403), 2)
-        circle(ctx, vx, vy, 40 - 15 * k, (0.40, 0.18, 0.40), 0.8)
+        for i in range(5):
+            t0 = 403 + i * 0.5
+            if t < t0:
+                continue
+            land = y - 70 - (i % 2) * 34
+            yy = min(land, -60 + 900 * (t - t0) ** 2)
+            bounce = 6 * math.exp(-6 * max(0, t - t0 - math.sqrt((land + 60) / 900))) * abs(math.sin((t - t0) * 20))
+            ctx.save()
+            ctx.translate(W * 0.36 + i * 38, yy - bounce)
+            ctx.rotate(0.3 * math.sin(i * 2.1))
+            rrect(ctx, -17, -17, 34, 34, 6)
+            ink(ctx, (0.85, 0.95, 1.0), 0.95, 2)
+            line(ctx, -10, -10, 4, -12, WHITE, 0.8, 2)
+            ctx.restore()
+        # vasos sanguíneos se fechando
+        for j in range(3):
+            w0 = 8 * (1 - 0.7 * k)
+            ctx.move_to(vx - 160, vy - 30 + j * 20)
+            ctx.curve_to(vx - 60, vy - 50 + j * 20, vx + 40, vy - 10 + j * 20, vx + 140, vy - 30 + j * 20)
+            rgba(ctx, (0.75, 0.20, 0.22), 0.5)
+            ctx.set_line_width(w0)
+            ctx.stroke()
+        # gotinhas de condensação/frio
+        for j in range(8):
+            ph = (t * 0.6 + j / 8) % 1
+            circle(ctx, W * 0.36 + j * 22, y - 40 + ph * 60, 2.5, (0.85, 0.95, 1.0), 0.7 * (1 - ph) * appear(t, 405))
+        circle(ctx, vx, vy, (40 - 15 * k) * (1 + 0.08 * math.sin(t * 7)), (0.40, 0.18, 0.40), 0.8)
         circle(ctx, vx, vy, 60, RED, 0.25 * k * (0.6 + 0.4 * math.sin(t * 6)))
-    elif t < 430:  # torniquete
-        rrect(ctx, W * 0.20, y - 60, 26, 100, 6)
+        pain_fx(ctx, t, vx + 20, vy - 10, 0.5 + 0.5 * k)
+    elif t < 430:  # torniquete apertando: pé fica pálido/roxo
+        sq = appear(t, 421, 2.5)
+        bx = W * 0.20
+        rrect(ctx, bx - 4 * sq, y - 70 + 8 * sq, 26 + 8 * sq, 110 - 16 * sq, 6)
         ink(ctx, (0.25, 0.22, 0.2), 1, 2)
-        circle(ctx, vx, vy, 50, (0.40, 0.18, 0.40), 0.7)
-    else:  # calor desativa o veneno
+        for j in range(3):  # setas de aperto
+            ang = j * 0.4 - 0.4
+            line(ctx, bx - 50, y - 15 + j * 15 - 20 * math.sin(ang), bx - 15 - 6 * sq, y - 15 + j * 15, WHITE, 0.6 * sq, 2)
+        circle(ctx, vx, vy, 50 + 6 * math.sin(t * 5), (0.40, 0.18, 0.40), 0.7)
+        # pé abaixo do torniquete fica arroxeado (sem sangue chegando)
+        g = cairo.RadialGradient(vx, vy - 20, 10, vx, vy - 20, 220)
+        g.add_color_stop_rgba(0, 0.35, 0.20, 0.45, 0.35 * sq)
+        g.add_color_stop_rgba(1, 0.35, 0.20, 0.45, 0)
+        ctx.set_source(g)
+        ctx.arc(vx, vy - 20, 220, 0, 2 * math.pi)
+        ctx.fill()
+        pain_fx(ctx, t, vx + 20, vy - 10, 1.0)
+    else:  # calor desativa o veneno: proteínas se quebrando
         heat = appear(t, 432, 4)
         circle(ctx, vx, vy, 50 * (1 - 0.6 * heat), (0.40, 0.18, 0.40), 0.7)
         for k in range(10):
             ang = k * 0.63 + t * 0.5
-            px, py = vx + math.cos(ang) * 120, vy + math.sin(ang) * 60
-            line(ctx, px, py, px + 10, py - 14, ORANGE, 0.6 * heat, 3)
+            ph = (t * 0.7 + k / 10) % 1
+            px, py = vx + math.cos(ang) * 120, vy + math.sin(ang) * 60 - ph * 50
+            line(ctx, px, py, px + 10, py - 14, ORANGE, 0.6 * heat * (1 - ph), 3)
+        for k in range(14):  # proteína (verde) -> fragmentos que somem
+            ang = k * 2 * math.pi / 14 + t * 0.3
+            r = 70 + 50 * heat
+            px, py = vx + math.cos(ang) * r, vy - 20 + math.sin(ang) * r * 0.5
+            if heat < 0.5:
+                circle(ctx, px, py, 7, (0.55, 0.95, 0.35), 0.9)
+            else:
+                for f in range(3):
+                    circle(ctx, px + f * 6 * heat, py - f * 5 * heat, 3, (0.55, 0.95, 0.35), 0.9 * (1.4 - heat))
+        pain_fx(ctx, t, vx + 20, vy - 10, 1 - 0.7 * heat)
 
 
 def u_answers(ctx, t):
+    if t < 406.8:  # vídeo real do gelo na tela
+        return
     marks = {"A": (402.3, 420, "x"), "B": (420, 430, "x"), "C": (430, 447, "v")}
     for i, (lt, nm, _) in enumerate(PANELS):
         x = W / 2 + (i - 1) * 370 - 165
@@ -559,7 +743,7 @@ def u_answers(ctx, t):
         s0 = marks[lt][0]
         if t > s0 + 1:
             (xmark if marks[lt][2] == "x" else check)(ctx, x + 310, 60, 14, appear(t, s0 + 1))
-    label(ctx, "A PIOR", W / 2, H * 0.22, t, 403.5, 420, 44, RED)
+    label(ctx, "A PIOR", W / 2, H * 0.22, t, 407, 420, 44, RED)
     label(ctx, "O FRIO CONCENTRA O VENENO NO LUGAR", W / 2, H * 0.90, t, 409, 420, 20, WHITE)
     label(ctx, "TAMBÉM NÃO — MAIS DANO AO TECIDO", W / 2, H * 0.22, t, 420.5, 430, 28, ORANGE)
     label(ctx, "ACERTOU", W / 2, H * 0.22, t, 431, 440, 44, GREEN)
@@ -587,22 +771,51 @@ def w_aid(ctx, t):
     rrect(ctx, bx - 205, by - 120, 410, 130, 12)
     rgba(ctx, (0.45, 0.72, 0.85), 0.8)
     ctx.fill()
-    limb(ctx, [(bx - 400, by - 300), (bx - 60, by - 60)], 90, SKIN)
-    ellipse_path(ctx, bx + 10, by - 50, 110, 40)
-    ink(ctx, SKIN, 1, 2.5)
-    rrect(ctx, bx - 205, by - 120, 410, 130, 12)
+    foot(ctx, bx + 60, by - 14, 1.0, facing=1, swell=0.4, bruise=0.35, leg_to=(bx - 330, by - 360))
+    # superfície ondulando
+    ctx.move_to(bx - 205, by - 118)
+    for i in range(41):
+        xx = bx - 205 + i * 10.25
+        ctx.line_to(xx, by - 118 + 3 * math.sin(xx * 0.05 + t * 4))
+    ctx.line_to(bx + 205, by + 10)
+    ctx.line_to(bx - 205, by + 10)
+    ctx.close_path()
     rgba(ctx, (0.45, 0.72, 0.85), 0.35)
     ctx.fill()
-    for k in range(5):
-        xx = bx - 160 + k * 80
-        ctx.move_to(xx, by - 140)
-        ctx.curve_to(xx - 14, by - 170, xx + 14, by - 190, xx, by - 220 - 6 * math.sin(t * 2 + k))
-        rgba(ctx, WHITE, 0.5)
+    for k in range(10):  # bolhas de calor
+        ph = (t * 0.5 + k / 10) % 1
+        circle(ctx, bx - 180 + (k * 41) % 360, by - ph * 110, 3, WHITE, 0.5 * (1 - ph))
+    for k in range(6):  # vapor subindo e se dissipando
+        ph = (t * 0.35 + k / 6) % 1
+        xx = bx - 170 + k * 70 + 20 * math.sin(t + k)
+        yy = by - 140 - ph * 160
+        ctx.move_to(xx, yy)
+        ctx.curve_to(xx - 14, yy - 25, xx + 14, yy - 45, xx + 4 * math.sin(t * 2 + k), yy - 70)
+        rgba(ctx, WHITE, 0.5 * math.sin(ph * math.pi))
         ctx.set_line_width(3)
         ctx.stroke()
-    if 474 < t < 480:
-        ellipse_path(ctx, bx + 150, by - 130 + 20 * appear(t, 474.5, 1), 50, 26)
+    if 473.5 < t < 481:  # a sua mão testando a água (desce, fica, sobe)
+        hy = by - 125 + kf(t, [(473.5, -260), (475, 10), (479, 10), (480.8, -260)])
+        hx = bx + 150
+        ctx.save()
+        ctx.translate(hx, hy)
+        limb(ctx, [(10, -60), (40, -300)], 46, SKIN, 1)
+        ctx.move_to(-28, -60)
+        ctx.curve_to(-30, -20, -26, 10, -16, 34)
+        for f in range(4):
+            fx0 = -16 + f * 11
+            ctx.curve_to(fx0, 50 - abs(f - 1.5) * 6, fx0 + 9, 50 - abs(f - 1.5) * 6, fx0 + 10, 34)
+        ctx.curve_to(36, 0, 36, -40, 32, -60)
+        ctx.close_path()
         ink(ctx, SKIN, 1, 2.5)
+        ctx.restore()
+        if 475 < t < 479:
+            for k in range(2):
+                ph = (t * 1.5 + k / 2) % 1
+                ellipse_path(ctx, hx, by - 118, 30 + ph * 60, 6 + ph * 8)
+                rgba(ctx, WHITE, 0.6 * (1 - ph))
+                ctx.set_line_width(2)
+                ctx.stroke()
 
 
 def u_aid(ctx, t):
@@ -611,21 +824,44 @@ def u_aid(ctx, t):
         label(ctx, "LIGUE: “PICADA DE PEIXE-PEDRA”", W / 2, H * 0.10, t, 454, 458, 22, ORANGE)
         label(ctx, "ESPINHO PRESO? SÓ TIRE SE FOR FÁCIL", W / 2, H * 0.10, t, 458, None, 20, WHITE)
         return
+    label(ctx, "SEM BACIA? GARRAFAS AO SOL, TORNEIRA DE QUIOSQUE", W / 2, H * 0.10, t, 486, 494, 18, WHITE)
+    label(ctx, "RESPIRANDO? TONTA? PÁLIDA? SUANDO FRIO?", W / 2, H * 0.10, t, 494, 507, 18, WHITE)
+    label(ctx, "HOSPITAL: DOR · RAIO-X · ANTÍDOTO", W / 2, H * 0.10, t, 507, 510, 18, ORANGE)
+    if 479.4 < t < 483.8 or 488.8 < t < 493.2 or t > 507.4:  # vídeos reais na tela: só o letreiro de cima
+        return
     big_title(ctx, [("~45 ", ORANGE, "black"), ("°C", WHITE, "light")], W * 0.80, H * 0.24, t, 466, None, 56)
     kicker(ctx, "QUENTE, MAS NÃO FERVENDO", W * 0.80, H * 0.30, t, 466.5, None, 15, WHITE)
     label(ctx, "TESTE COM A SUA MÃO, NÃO COM O PÉ DELA", W * 0.72, H * 0.44, t, 474.5, 486, 18, YELLOW)
     if t > 480:
         timer(ctx, W * 0.80, H * 0.58, 70, clamp((t - 480.5) / 4), appear(t, 480.5), "30–90 MIN")
-    label(ctx, "SEM BACIA? GARRAFAS AO SOL, TORNEIRA DE QUIOSQUE", W / 2, H * 0.10, t, 486, 494, 18, WHITE)
-    label(ctx, "RESPIRANDO? TONTA? PÁLIDA? SUANDO FRIO?", W / 2, H * 0.10, t, 494, 507, 18, WHITE)
-    label(ctx, "HOSPITAL: DOR · RAIO-X · ANTÍDOTO NOS CASOS GRAVES", W / 2, H * 0.10, t, 507, None, 18, ORANGE)
 
 
 # ================================================================== 8:40 – 9:26 a reviravolta
 def w_twist(ctx, t):
     if t < 540:
         underwater_close(ctx, t)
-        stonefish(ctx, W * 0.50, H * 0.88, 600, t, camo=0.6, eyes=1, seed=4, algae=0.8)
+        # raia passando ao fundo (silhueta) — "tubarões, raias" não conseguem mordê-lo
+        rx = kf(t, [(527, W * 1.3), (540, -W * 0.3)])
+        ry = H * 0.42 + 14 * math.sin(t * 0.9)
+        ctx.save()
+        ctx.translate(rx, ry)
+        flap = 18 * math.sin(t * 2.4)
+        ctx.move_to(-90, 0)
+        ctx.curve_to(-40, -30 - flap, 30, -60 - flap, 70, -10)
+        ctx.line_to(90, 0)
+        ctx.line_to(70, 10)
+        ctx.curve_to(30, 60 + flap, -40, 30 + flap, -90, 0)
+        ctx.close_path()
+        rgba(ctx, (0.10, 0.20, 0.24), 0.55)
+        ctx.fill()
+        line(ctx, 85, 0, 230, 6 * math.sin(t * 3), (0.10, 0.20, 0.24), 0.55, 3)
+        ctx.restore()
+        stonefish(ctx, W * 0.50, H * 0.88, 600, t, camo=0.6, eyes=1, seed=4, algae=0.8, breathe=1)
+        # cardume de peixinhos passando bem na frente da boca — ele nem se mexe
+        for k in range(7):
+            px = kf(t, [(522 + k * 0.4, -W * 0.2), (536 + k * 0.4, W * 1.2)])
+            py = H * 0.55 + 30 * math.sin(k * 1.3) + 10 * math.sin(t * 2 + k)
+            fish(ctx, px, py, 0.8, t + k, (0.85, 0.75, 0.45), 0.95, flip=1, wiggle=0.06)
         return
     if t < 556:
         studio(ctx, t, H * 0.86)
