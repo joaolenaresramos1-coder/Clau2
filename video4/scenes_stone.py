@@ -60,7 +60,7 @@ def w_open(ctx, t):
     cam(ctx, cx, kf(t, [(0, H * 0.55), (28, FLOOR - 80)]), z)
 
     def mid(c):
-        stonefish(c, SF_X, FLOOR + 6, 120, t, camo=1.0, eyes=0.0, seed=4)
+        stonefish(c, SF_X, FLOOR + 6, 120, t, camo=1.0, eyes=0.0, seed=4, bury=1.0)
         wader(c, x, t, "swimmer", WALK.facing(t), 1.2, walker_pose(WALK, t, 70))
         small_fish(c, t, 7, 2)
         # nuvenzinha de areia a cada passo
@@ -86,7 +86,8 @@ def w_step(ctx, t):
     floor = H * 0.80
     press = appear(t, 33.2, 0.25)
     spn = appear(t, 33.0, 0.18)
-    stonefish(ctx, W * 0.50, floor + 10, 640, t, camo=1.0 - 0.2 * spn, eyes=0.0, spines=spn, seed=4, breathe=False)
+    stonefish(ctx, W * 0.50, floor + 10, 640, t, camo=1.0 - 0.2 * spn, eyes=0.0, spines=spn, seed=4, breathe=False,
+              bury=1.0)
     # perna e pé descendo (vem de cima, peso do corpo)
     fy = kf(t, [(28, H * 0.05), (31.5, H * 0.30), (33.2, H * 0.47)]) + (6 if t > 33.2 else 0)
     limb(ctx, [(fx - 40, -40), (fx - 10, fy - 30)], 70, SKIN)
@@ -132,7 +133,7 @@ def w_look(ctx, t):
         cam(ctx, SF_X - 60, FLOOR - 40, 1.8)
 
         def mid(c):
-            stonefish(c, SF_X, FLOOR + 6, 120, t, camo=1.0, eyes=0.0, seed=4)
+            stonefish(c, SF_X, FLOOR + 6, 120, t, camo=1.0, eyes=0.0, seed=4, bury=1.0)
             rig.figure(c, SF_X - 125, FLOOR, 1.2, rig.p_flinch(t), outfit="swimmer", facing=1, t=t, shadow=False)
 
         reef_scene(ctx, t, mid)
@@ -142,17 +143,15 @@ def w_look(ctx, t):
     underwater_close(ctx, t)
     e = appear(t, 64.2, 1.2)
     stonefish(ctx, W * 0.50, H * 0.88, 760, t, camo=1 - 0.6 * e, eyes=e, seed=4,
-              spines=appear(t, 66.8, 0.5) * window(t, 66.8, 76))
+              spines=appear(t, 66.8, 0.5) * window(t, 66.8, 76), bury=1 - appear(t, 69, 3))
 
 
 def u_look(ctx, t):
     if t >= 63:
-        callout(ctx, W * 0.50 + 760 * 0.26, H * 0.88 - 760 * 0.42 * 0.88, 26, W * 0.80, H * 0.14, "OLHOS",
-                window(t, 65.5, 72))
-        callout(ctx, W * 0.50 + 760 * 0.40, H * 0.88 - 760 * 0.42 * 0.55, 30, W * 0.86, H * 0.42, "BOCA",
-                window(t, 66.2, 72))
-        callout(ctx, W * 0.42, H * 0.88 - 760 * 0.42 * 1.05, 60, W * 0.18, H * 0.14, "13 ESPINHOS",
-                window(t, 66.8, 76))
+        sx, gy, L = W * 0.50, H * 0.88, 760
+        callout(ctx, *sf_point(sx, gy, L, 0.31, -0.33), 26, W * 0.80, H * 0.14, "OLHOS", window(t, 65.5, 72))
+        callout(ctx, *sf_point(sx, gy, L, 0.45, 0.10), 30, W * 0.88, H * 0.46, "BOCA", window(t, 66.2, 72))
+        callout(ctx, *sf_point(sx, gy, L, -0.05, -0.62), 60, W * 0.18, H * 0.14, "13 ESPINHOS", window(t, 66.8, 76))
         label(ctx, "A UM PALMO DO SEU PÉ", W / 2, H * 0.08, t, 74.5, 79, 22, WHITE)
 
 
@@ -191,11 +190,12 @@ def u_anat(ctx, t):
     label(ctx, "O QUE ELE É?", W / 2, 70, t, 110.2, 114, 34, ORANGE)
     kicker(ctx, "ÁGUAS RASAS E QUENTES · DO MAR VERMELHO À AUSTRÁLIA", W / 2, 70, t, 114, 121, 15, WHITE)
     scale_bar(ctx, sx - L / 2, sx + L / 2, H * 0.94, (t - 121.5) / 0.8, "30–40 CM")
-    callout(ctx, sx - L * 0.1, H * 0.62, 70, W * 0.16, H * 0.18, "CORPO GROSSO", window(t, 124, 130))
-    callout(ctx, sx + L * 0.40, H * 0.62, 40, W * 0.84, H * 0.18, "BOCA VIRADA PARA CIMA", window(t, 125.5, 130))
+    callout(ctx, *sf_point(sx, H * 0.88, L, -0.05, 0.0), 70, W * 0.16, H * 0.18, "CORPO GROSSO", window(t, 124, 130))
+    callout(ctx, *sf_point(sx, H * 0.88, L, 0.45, 0.10), 40, W * 0.84, H * 0.18, "BOCA VIRADA PARA CIMA",
+            window(t, 125.5, 130))
     label(ctx, "SEM ESCAMAS · VERRUGAS E DOBRAS", W / 2, 70, t, 128, 138, 22, WHITE)
     label(ctx, "ALGAS CRESCEM POR CIMA, COMO NUMA PEDRA", W / 2, 70, t, 138, 144, 20, WHITE)
-    callout(ctx, sx + L * 0.26, H * 0.88 - L * 0.42 * 0.88, 30, W * 0.84, H * 0.20, "OLHOS NO ALTO DA CABEÇA",
+    callout(ctx, *sf_point(sx, H * 0.88, L, 0.31, -0.33), 30, W * 0.70, H * 0.20, "OLHOS NO ALTO DA CABEÇA",
             window(t, 144.2, 150))
 
 
@@ -209,7 +209,7 @@ def w_ambush(ctx, t):
     span = 0.12 if not slow else 1.2
     mouth = window(t, tb - span * 0.3, tb + span, span * 0.3) if t < 183 else 0
     stonefish(ctx, sx, ground, L, t, camo=0.3, eyes=1, seed=4, mouth=mouth)
-    mx, my = sx + L * 0.40, ground - L * 0.42 * 0.62
+    mx, my = sf_point(sx, ground, L, 0.45, 0.10)
     if (t < tb and t > 155) or (slow and t < tb):
         t0 = 155 if not slow else 176
         p = Path([(t0, W * 1.1, my - 160), (tb - (0.05 if not slow else 0.5), mx + 30, my - 40)])

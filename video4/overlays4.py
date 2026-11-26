@@ -17,7 +17,7 @@ CACHE = os.path.join(HERE, "out", "media_cache")
 
 # (início, fim, arquivo, crédito, rótulo, sobretítulo, zoom de, zoom até, foco x, foco y)
 INSERTS = [
-    (0.6, 7.6, "coral_0.jpg", "Foto: U.S. Geological Survey · Domínio público", None, "", 1.0, 1.15, 0.5, 0.5),
+    (-1.0, 7.6, "coral_0.jpg", "Foto: U.S. Geological Survey · Domínio público", None, "", 1.0, 1.15, 0.5, 0.5),
     (57.0, 62.8, "stonefish_2.jpg", "Foto: zsispeo / CC BY-SA 2.0", None, "CONSEGUE ACHAR O PEIXE?", 1.0, 1.25, 0.5,
      0.55),
     (82.5, 88.0, "stonefish_0.jpg", "Foto: walknboston / CC BY 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
