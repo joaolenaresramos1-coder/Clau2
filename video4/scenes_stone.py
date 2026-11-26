@@ -205,7 +205,8 @@ def u_anat(ctx, t):
     sx, L = W * 0.50, 700
     label(ctx, "O QUE ELE É?", W / 2, 70, t, 110.2, 114, 34, ORANGE)
     kicker(ctx, "ÁGUAS RASAS E QUENTES · DO MAR VERMELHO À AUSTRÁLIA", W / 2, 70, t, 114, 121, 15, WHITE)
-    scale_bar(ctx, sx - L / 2, sx + L / 2, H * 0.94, (t - 121.5) / 0.8, "30–40 CM")
+    if not (128.8 < t < 135.2 or 137.9 < t < 151.2):
+        scale_bar(ctx, sx - L / 2, sx + L / 2, H * 0.94, (t - 121.5) / 0.8, "30–40 CM")
     callout(ctx, *sf_point(sx, H * 0.88, L, -0.05, 0.0), 70, W * 0.16, H * 0.18, "CORPO GROSSO", window(t, 124, 130))
     callout(ctx, *sf_point(sx, H * 0.88, L, 0.45, 0.10), 40, W * 0.84, H * 0.18, "BOCA VIRADA PARA CIMA",
             window(t, 125.5, 130))

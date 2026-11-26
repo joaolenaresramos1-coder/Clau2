@@ -18,29 +18,21 @@ CACHE = os.path.join(HERE, "out", "media_cache")
 
 # (início, fim, arquivo, crédito, rótulo, sobretítulo, zoom de, zoom até, foco x, foco y)
 INSERTS = [
-    (-1.0, 7.6, "m2164.mp4@4", "Vídeo: Mixkit", None, "", 1.0, 1.08, 0.5, 0.5),
-    (7.6, 13.4, "m4418.mp4@6", "Vídeo: Mixkit", None, "", 1.0, 1.06, 0.5, 0.5),
-    (13.4, 19.2, "m4020.mp4@9", "Vídeo: Mixkit", None, "", 1.0, 1.06, 0.5, 0.5),
-    (19.2, 24.6, "m10051.mp4@5", "Vídeo: Mixkit", None, "", 1.0, 1.06, 0.5, 0.5),
     (57.0, 62.8, "stonefish_2.jpg", "Foto: zsispeo / CC BY-SA 2.0", None, "CONSEGUE ACHAR O PEIXE?", 1.0, 1.25, 0.5,
      0.55),
     (82.5, 88.0, "stonefish_0.jpg", "Foto: walknboston / CC BY 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
-    (113.8, 120.8, "m32286.mp4@1", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
+    (114.5, 120.8, "sf_05.jpg", "Foto: mattk1979 / CC BY-SA 2.0", None, "MAR VERMELHO", 1.0, 1.15, 0.5, 0.5),
+    (129.0, 135.0, "sf_19.jpg", "Foto: krokodiver / CC BY 2.0", None, "MANCHAS E VERRUGAS", 1.0, 1.15, 0.5, 0.5),
     (138.2, 144.0, "synanceia_3.jpg", "Foto: Dan Schofield / CC BY 4.0", None, "", 1.0, 1.15, 0.5, 0.5),
     (147.0, 151.0, "synanceia_1.jpg", "Foto: Tim Evanson / CC BY-SA 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
-    (151.4, 157.8, "m4020.mp4@3", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
-    (161.8, 165.0, "m4291.mp4@1", "Vídeo: Mixkit", None, "", 1.0, 1.06, 0.5, 0.5),
-    (165.0, 175.5, "stonefish_1.jpg", "Foto: prilfish / CC BY 2.0", None, "UM PEIXE-PEDRA ESCONDIDO PERTO DE UMA MOREIA",
-     1.0, 1.2, 0.6, 0.5),
-    (294.3, 300.3, "m44397.mp4@4", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
-    (300.3, 304.5, "m30258.mp4@6", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
+    (150.6, 155.0, "sf_25.jpg", "Foto: prilfish / CC BY 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
+    (155.0, 160.6, "sf_10.jpg", "Foto: prilfish / CC BY 2.0", None, "MEIO ENTERRADO NA AREIA", 1.0, 1.12, 0.5, 0.5),
+    (299.0, 304.5, "sf_22.jpg", "Foto: prilfish / CC BY 2.0", None, "PRESO NO RASO, ESPERANDO A MARÉ", 1.0, 1.15, 0.5, 0.5),
     (304.5, 310.0, "synanceia_2.jpg", "Foto: B. P. White / CC BY-SA 4.0", None, "", 1.0, 1.15, 0.5, 0.5),
-    (230.6, 233.6, "m4406.mp4@2", "Vídeo: Mixkit", None, "CONTRA TUBARÕES...", 1.0, 1.06, 0.5, 0.5),
-    (233.6, 236.4, "m48366.mp4@1", "Vídeo: Mixkit", None, "...E RAIAS", 1.0, 1.06, 0.5, 0.5),
-    (556.5, 562.8, "m4465.mp4@0", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
-    (562.8, 566.3, "m7255.mp4@1", "Vídeo: Mixkit", None, "", 1.0, 1.06, 0.5, 0.5),
+    (521.6, 526.4, "sf_23.jpg", "Foto: krokodiver / CC BY 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
+    (530.0, 535.0, "sf_28.jpg", "Foto: prilfish / CC BY 2.0", None, "FINGINDO SER UMA PEDRA", 1.0, 1.15, 0.5, 0.5),
+    (562.6, 566.3, "sf_02.jpg", "Foto: berniedup / CC BY-SA 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
     (566.5, 573.5, "stonefish_3.jpg", "Foto: 4nitsirk / CC BY-SA 2.0", None, "", 1.0, 1.15, 0.5, 0.5),
-    (578.6, 584.8, "m27610.mp4@4", "Vídeo: Mixkit", None, "", 1.0, 1.05, 0.5, 0.5),
 ]
 
 _IMG = {}
