@@ -27,6 +27,9 @@ OUTFITS = {
                     hood=None, mask=False, tank=None, band=None, shorts=(0.16, 0.22, 0.34), hand=SKIN),
     "friend": dict(top=(0.82, 0.30, 0.26), arm=SKIN, leg=SKIN, foot=SKIN, feet="bare", hair=(0.12, 0.10, 0.09),
                    hood=None, mask=False, tank=None, band=None, shorts=(0.20, 0.24, 0.30), hand=SKIN),
+    # amiga: cabelo comprido preso em rabo de cavalo, maiô
+    "amiga": dict(top=(0.80, 0.34, 0.42), arm=SKIN, leg=SKIN, foot=SKIN, feet="bare", hair=(0.24, 0.14, 0.09),
+                  hood=None, mask=False, tank=None, band=None, shorts=(0.80, 0.34, 0.42), hand=SKIN, long_hair=True),
     "lifeguard": dict(top=(0.88, 0.22, 0.20), arm=SKIN, leg=SKIN, foot=SKIN, feet="bare", hair=(0.55, 0.40, 0.22),
                       hood=None, mask=False, tank=None, band=None, shorts=(0.95, 0.80, 0.22), hand=SKIN),
     "stockings": dict(top=(0.88, 0.22, 0.20), arm=SKIN, leg=(0.55, 0.40, 0.33), foot=(0.55, 0.40, 0.33), feet="bare",
@@ -395,6 +398,25 @@ def figure(ctx, x, y, s, p, outfit="swimmer", facing=1, a=1.0, ground=True, shad
             ctx.close_path()
             rgba(ctx, o["hair"], a)
             ctx.fill()
+            if o.get("long_hair"):
+                # rabo de cavalo caindo atrás da cabeça, até o ombro, com balanço leve
+                sw = 1.5 * math.sin(t * 3.0) if t is not None else 0
+                ctx.move_to(-HEAD_R * 0.70, -HEAD_R * 0.55)
+                ctx.curve_to(-HEAD_R * 1.55, -HEAD_R * 0.40, -HEAD_R * 1.50 + sw, HEAD_R * 0.90,
+                             -HEAD_R * 1.05 + sw, HEAD_R * 1.85)
+                ctx.curve_to(-HEAD_R * 0.80 + sw, HEAD_R * 1.20, -HEAD_R * 0.90, HEAD_R * 0.20, -HEAD_R * 0.55,
+                             -HEAD_R * 0.15)
+                ctx.close_path()
+                rgba(ctx, o["hair"], a)
+                ctx.fill_preserve()
+                rgba(ctx, INK, a)
+                ctx.set_line_width(1.2)
+                ctx.stroke()
+                circle_ = (-HEAD_R * 0.78, -HEAD_R * 0.45)
+                ctx.new_sub_path()
+                ctx.arc(circle_[0], circle_[1], 1.6, 0, 2 * math.pi)
+                rgba(ctx, (0.85, 0.30, 0.35), a)
+                ctx.fill()
         ctx.new_sub_path()
         ctx.arc(HEAD_R * 0.42, -2.5, 1.2, 0, 2 * math.pi)
         rgba(ctx, INK, a)

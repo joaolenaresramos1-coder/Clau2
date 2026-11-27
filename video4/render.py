@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gfx import W, H, FPS
 import math
 from gfx import ease, clamp
-from scenes_stone import SCENES, CUTS
+from scenes_stone import SCENES, CUTS, ANCH
 from overlays4 import draw_inserts
 from mood import grade
 
@@ -35,6 +35,7 @@ def scene_draw(ctx, t):
             z = 1.0 + 0.09 * ease(p)
             dx = math.sin(t * 0.13 + s) * 14
             dy = math.cos(t * 0.11 + s) * 8
+            ANCH.clear()
             ctx.save()
             ctx.translate(W / 2 + dx, H / 2 + dy)
             ctx.scale(z, z)
@@ -124,7 +125,7 @@ def full(nproc=4):
     with open(lst, "w") as f:
         for i in range(nproc):
             f.write(f"file 'part{i}.mp4'\n")
-    final = os.path.join(OUT, "peixe_pedra_v3.mp4")
+    final = os.path.join(OUT, "peixe_pedra_v4.mp4")
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-i", MIX if os.path.exists(MIX) else AUDIO,
                     "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-shortest",
                     "-movflags", "+faststart", final], check=True)

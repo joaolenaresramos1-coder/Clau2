@@ -9,6 +9,28 @@ from mood import depth_fog
 SF_X = W * 0.62  # onde o peixe-pedra está na cena de abertura
 
 
+
+# ---------------------------------------------------------------- âncoras de marcação
+# A cena (world) marca o ponto exato do desenho em coordenadas do dispositivo (já com câmera/zoom);
+# a camada de texto (ui) desenha a marcação nesse mesmo ponto. Assim o círculo sempre cai no lugar certo.
+ANCH = {}
+
+
+def mark(ctx, key, x, y, r=30):
+    dx, dy = ctx.user_to_device(x, y)
+    dr = math.hypot(*ctx.user_to_device_distance(r, 0))
+    ANCH[key] = (dx, dy, dr)
+
+
+def mcallout(ctx, key, tx, ty, s, k, size=16):
+    if k <= 0 or key not in ANCH:
+        return
+    dx, dy, dr = ANCH[key]
+    x, y = ctx.device_to_user(dx, dy)
+    r = math.hypot(*ctx.device_to_user_distance(dr, 0))
+    callout(ctx, x, y, r, tx, ty, s, k, size)
+
+
 def cam(ctx, cx, cy, z):
     ctx.save()
     ctx.translate(W / 2, H / 2)
@@ -112,6 +134,7 @@ def w_step(ctx, t):
     if t > 36:
         k = appear(t, 36.2, 0.4)
         circle(ctx, fx + 10, fy - 4, 14 * k, RED, 0.6)
+    mark(ctx, "fisgada", fx + 10, fy - 4, 26)
     if 36.0 < t < 37.0:
         rgba(ctx, (1, 0.9, 0.85), 0.5 * (1 - (t - 36)))
         ctx.paint()
@@ -121,7 +144,7 @@ def w_step(ctx, t):
 
 
 def u_step(ctx, t):
-    callout(ctx, W * 0.45 + 30, H * 0.47 + 30, 26, W * 0.70, H * 0.20, "UMA FISGADA", window(t, 36.5, 42))
+    mcallout(ctx, "fisgada", W * 0.70, H * 0.20, "UMA FISGADA", window(t, 39.0, 42.8))
 
 
 def w_pain(ctx, t):
@@ -159,15 +182,18 @@ def w_look(ctx, t):
     underwater_close(ctx, t)
     e = appear(t, 64.2, 1.2)
     stonefish(ctx, W * 0.50, H * 0.88, 760, t, camo=1 - 0.6 * e, eyes=e, seed=4,
-              spines=appear(t, 66.8, 0.5) * window(t, 66.8, 76), bury=1 - appear(t, 69, 3))
+              spines=appear(t, 67.2, 0.5) * window(t, 67.2, 74), bury=1 - appear(t, 69, 3))
+    sx, gy, L = W * 0.50, H * 0.88, 760
+    mark(ctx, "olhos", *sf_point(sx, gy, L, 0.31, -0.33), 26)
+    mark(ctx, "boca", *sf_point(sx, gy, L, 0.43, 0.12), 34)
+    mark(ctx, "espinhos", *sf_point(sx, gy, L, -0.04, -0.56), 70)
 
 
 def u_look(ctx, t):
     if t >= 63:
-        sx, gy, L = W * 0.50, H * 0.88, 760
-        callout(ctx, *sf_point(sx, gy, L, 0.31, -0.33), 26, W * 0.80, H * 0.14, "OLHOS", window(t, 65.5, 72))
-        callout(ctx, *sf_point(sx, gy, L, 0.45, 0.10), 30, W * 0.88, H * 0.46, "BOCA", window(t, 66.2, 72))
-        callout(ctx, *sf_point(sx, gy, L, -0.05, -0.62), 60, W * 0.18, H * 0.14, "13 ESPINHOS", window(t, 66.8, 76))
+        mcallout(ctx, "olhos", W * 0.80, H * 0.14, "OLHOS", window(t, 65.3, 68.6))
+        mcallout(ctx, "boca", W * 0.88, H * 0.46, "BOCA", window(t, 66.3, 69.0))
+        mcallout(ctx, "espinhos", W * 0.56, H * 0.08, "13 ESPINHOS · 2 BOLSAS DE VENENO CADA", window(t, 67.3, 73.6))
         label(ctx, "A UM PALMO DO SEU PÉ", W / 2, H * 0.08, t, 74.5, 79, 22, WHITE)
 
 
@@ -199,21 +225,26 @@ def w_anat(ctx, t):
     underwater_close(ctx, t)
     camo = kf(t, [(110, 0.0), (128, 0.0), (134, 0.6)])
     stonefish(ctx, W * 0.50, H * 0.88, 700, t, camo=camo, eyes=1, seed=4, algae=appear(t, 138, 2))
+    sx, L = W * 0.50, 700
+    mark(ctx, "corpo", *sf_point(sx, H * 0.88, L, -0.05, 0.0), 80)
+    mark(ctx, "boca2", *sf_point(sx, H * 0.88, L, 0.43, 0.12), 40)
+    mark(ctx, "olhos2", *sf_point(sx, H * 0.88, L, 0.31, -0.33), 30)
+    a, b = ctx.user_to_device(sx - L * 0.60, H * 0.94), ctx.user_to_device(sx + L * 0.50, H * 0.94)
+    ANCH["regua"] = (a, b)
 
 
 def u_anat(ctx, t):
     sx, L = W * 0.50, 700
     label(ctx, "O QUE ELE É?", W / 2, 70, t, 110.2, 114, 34, ORANGE)
     kicker(ctx, "ÁGUAS RASAS E QUENTES · DO MAR VERMELHO À AUSTRÁLIA", W / 2, 70, t, 114, 121, 15, WHITE)
-    if not (128.8 < t < 135.2 or 137.9 < t < 151.2):
-        scale_bar(ctx, sx - L / 2, sx + L / 2, H * 0.94, (t - 121.5) / 0.8, "30–40 CM")
-    callout(ctx, *sf_point(sx, H * 0.88, L, -0.05, 0.0), 70, W * 0.16, H * 0.18, "CORPO GROSSO", window(t, 124, 130))
-    callout(ctx, *sf_point(sx, H * 0.88, L, 0.45, 0.10), 40, W * 0.84, H * 0.18, "BOCA VIRADA PARA CIMA",
-            window(t, 125.5, 130))
+    if 121.3 < t < 128.6 and "regua" in ANCH:  # só enquanto fala do tamanho
+        (ax, ay), (bx, by) = [ctx.device_to_user(*q) for q in ANCH["regua"]]
+        scale_bar(ctx, ax, bx, ay, (t - 121.5) / 0.8, "30–40 CM")
+    mcallout(ctx, "corpo", W * 0.16, H * 0.18, "CORPO GROSSO", window(t, 124.2, 128.2))
+    mcallout(ctx, "boca2", W * 0.70, H * 0.14, "BOCA VIRADA PARA CIMA", window(t, 125.4, 128.4))
     label(ctx, "SEM ESCAMAS · VERRUGAS E DOBRAS", W / 2, 70, t, 128, 138, 22, WHITE)
     label(ctx, "ALGAS CRESCEM POR CIMA, COMO NUMA PEDRA", W / 2, 70, t, 138, 144, 20, WHITE)
-    callout(ctx, *sf_point(sx, H * 0.88, L, 0.31, -0.33), 30, W * 0.70, H * 0.20, "OLHOS NO ALTO DA CABEÇA",
-            window(t, 144.2, 150))
+    mcallout(ctx, "olhos2", W * 0.70, H * 0.20, "OLHOS NO ALTO DA CABEÇA", window(t, 144.2, 148.2))
 
 
 # ================================================================== 2:30 – 3:07 o bote
@@ -343,6 +374,10 @@ def w_spines(ctx, t):
     ctx.restore()
     vf = appear(t, 213, 1.0) * (1 - appear(t, 222, 1))
     spine_detail(ctx, t, cx, base_y, L, press, venom_flow=vf)
+    sq = 1 - 0.55 * press
+    mark(ctx, "bolsa", cx + L * 0.035 + L * 0.045 * sq + L * 0.02, base_y - L * (0.32 - 0.10 * press), 30)
+    mark(ctx, "bainha", cx + L * 0.10, base_y - L * 0.12, 26)
+    mark(ctx, "sulcos", cx + L * 0.03, base_y - L * 0.62, 20)
     if 204 <= t < 225:
         tip_y = base_y - L
         # o pé desce (com tremor quando o peso entra) e o espinho penetra a sola
@@ -389,11 +424,9 @@ def u_spines(ctx, t):
         label(ctx, "13 ESPINHOS · NORMALMENTE DEITADOS", W / 2, H * 0.10, t, 189.3, 194.5, 24, WHITE)
         label(ctx, "PRESSÃO DE CIMA: ELES SE LEVANTAM", W / 2, H * 0.10, t, 194.5, None, 24, ORANGE)
         return
-    callout(ctx, W * 0.36 + 34, H * 0.84 - 120, 30, W * 0.66, H * 0.30, "BOLSA DE VENENO (2 POR ESPINHO)",
-            window(t, 201, 207))
-    callout(ctx, W * 0.36 + 36, H * 0.84 - 60, 26, W * 0.66, H * 0.48, "BAINHA DE PELE, COMO UMA LUVA",
-            window(t, 205, 212))
-    callout(ctx, W * 0.36 + 10, H * 0.84 - 200, 18, W * 0.66, H * 0.20, "DOIS SULCOS", window(t, 213, 220))
+    mcallout(ctx, "bolsa", W * 0.66, H * 0.30, "BOLSA DE VENENO (UMA DE CADA LADO)", window(t, 201.2, 205.2))
+    mcallout(ctx, "bainha", W * 0.66, H * 0.48, "PELE SOLTA, COMO UMA LUVA", window(t, 205.3, 212.8))
+    mcallout(ctx, "sulcos", W * 0.66, H * 0.20, "DOIS SULCOS", window(t, 213.2, 217.2))
     label(ctx, "PELE DO DORSO DO PEIXE (CORTE)", W * 0.80, H * 0.93, t, 200, 224, 16, WHITE)
     label(ctx, "QUANTO MAIS FORTE O PASSO, MAIS VENENO", W / 2, H * 0.08, t, 217, 223, 22, ORANGE)
     if t > 223:
@@ -591,13 +624,25 @@ def w_scene(ctx, t):
         wader(c, x, t, "swimmer", you.facing(t), 1.2, walker_pose(you, t, 70))
         fx, _ = fr.pos(t)
         if t < 367:
-            wader(c, fx, t, "friend", fr.facing(t), 1.2, walker_pose(fr, t, 70))
+            wader(c, fx, t, "amiga", fr.facing(t), 1.2, walker_pose(fr, t, 70))
         else:
             # grita, levanta a perna e cai sentada na água (gravidade): termina sentada no fundo
             fall = appear(t, 367.3, 0.7)
             p = rig.blend(rig.p_flinch(t), rig.pose(lean=-10, thighF=80, kneeF=40, thighB=70, kneeB=30, armF=70,
                                                     elbowF=80, armB=60, elbowB=80), fall)
-            rig.figure(c, fx, FLOOR, 1.2, p, outfit="friend", facing=1, t=t, shadow=False)
+            # depois segura o pé com as duas mãos, balançando de dor
+            rock = 3 * math.sin(t * 3.2)
+            hold = rig.pose(lean=20 + rock, thighF=135, kneeF=135, thighB=90, kneeB=0, armF=15, elbowF=5, armB=10,
+                            elbowB=10, footF=0, neck=30 + rock)
+            p = rig.blend(p, hold, appear(t, 370.4, 1.4))
+            rig.figure(c, fx, FLOOR, 1.2, p, outfit="amiga", facing=1, t=t, shadow=False)
+            pts = rig.world_points(fx, FLOOR, 1.2, p, 1)
+            sx_ = (pts["ankleF"][0] + pts["toeF"][0]) / 2
+            sy_ = max(pts["ankleF"][1], pts["toeF"][1]) + 2
+            if t > 372.5:  # furo na sola + pele pálida em volta
+                circle(c, sx_, sy_, 5 * appear(t, 372.5, 1), (0.98, 0.92, 0.88), 0.8)
+                circle(c, sx_, sy_, 2, RED, appear(t, 373, 0.5))
+            mark(c, "furo", sx_, sy_, 14)
         splash(c, W * 0.58, SURF, t, 367.7, 1, 0.6)
 
     reef_scene(ctx, t, mid)
@@ -608,7 +653,7 @@ def u_scene(ctx, t):
     chapter(ctx, "MANHÃ · MARÉ BAIXA", "O QUE VOCÊ", "FARIA?", W / 2, H * 0.14, t, 353.5, 360, 44)
     if 367 < t < 369:
         text(ctx, "AI!", W * 0.62, H * 0.30, 40, WHITE, window(t, 367, 369), "c", "black")
-    callout(ctx, W * 0.55, H * 0.55, 40, W * 0.30, H * 0.20, "UM FURO NA SOLA · A PELE EMPALIDECE", window(t, 373, 381))
+    mcallout(ctx, "furo", W * 0.30, H * 0.20, "UM FURO NA SOLA · A PELE EMPALIDECE", window(t, 373.2, 379.5))
     label(ctx, "100 M ATÉ A AREIA · ÁGUA, TOALHA E CELULAR", W / 2, H * 0.94, t, 382, None, 20, WHITE)
 
 
@@ -757,7 +802,7 @@ def w_aid(ctx, t):
         def mid(c):
             x, _ = you.pos(t)
             wader(c, x, t, "swimmer", you.facing(t), 1.2, walker_pose(you, t, 60))
-            wader(c, x - 50 * you.facing(t), t, "friend", you.facing(t), 1.2,
+            wader(c, x - 50 * you.facing(t), t, "amiga", you.facing(t), 1.2,
                   rig.blend(walker_pose(you, t, 60), rig.p_flinch(t), 0.4))
 
         reef_scene(ctx, t, mid)
