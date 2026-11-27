@@ -29,7 +29,7 @@ OUTFITS = {
                    hood=None, mask=False, tank=None, band=None, shorts=(0.20, 0.24, 0.30), hand=SKIN),
     # amiga: cabelo comprido preso em rabo de cavalo, maiô
     "amiga": dict(top=(0.80, 0.34, 0.42), arm=SKIN, leg=SKIN, foot=SKIN, feet="bare", hair=(0.24, 0.14, 0.09),
-                  hood=None, mask=False, tank=None, band=None, shorts=(0.80, 0.34, 0.42), hand=SKIN, long_hair=True),
+                  hood=None, mask=False, tank=None, band=None, shorts=None, hand=SKIN, long_hair=True),
     "lifeguard": dict(top=(0.88, 0.22, 0.20), arm=SKIN, leg=SKIN, foot=SKIN, feet="bare", hair=(0.55, 0.40, 0.22),
                       hood=None, mask=False, tank=None, band=None, shorts=(0.95, 0.80, 0.22), hand=SKIN),
     "stockings": dict(top=(0.88, 0.22, 0.20), arm=SKIN, leg=(0.55, 0.40, 0.33), foot=(0.55, 0.40, 0.33), feet="bare",
@@ -235,26 +235,230 @@ def _chain(ctx, pts, widths, colors, a, dark=False):
             ctx.fill()
 
 
+# ------------------------------------------------------------------ desenho (v2: formas anatômicas, referência do canal)
+LINE = 1.9
+
+
+def _unit(dx, dy):
+    L = math.hypot(dx, dy) or 1e-6
+    return dx / L, dy / L
+
+
+def _cr(ctx, pts, closed=False, move=True):
+    """Curva suave (Catmull-Rom -> Bézier) passando pelos pontos."""
+    n = len(pts)
+    if move:
+        ctx.move_to(*pts[0])
+    rng = range(n) if closed else range(n - 1)
+    for i in rng:
+        p0 = pts[(i - 1) % n] if (closed or i > 0) else pts[i]
+        p1, p2 = pts[i], pts[(i + 1) % n]
+        p3 = pts[(i + 2) % n] if (closed or i + 2 < n) else p2
+        ctx.curve_to(p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6,
+                     p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1])
+    if closed:
+        ctx.close_path()
+
+
+def _limb_outline(pts, wb, wf):
+    """Pontos do contorno de um membro: wb = meia-largura do lado de trás, wf = da frente, por ponto."""
+    back, front = [], []
+    n = len(pts)
+    for i, p in enumerate(pts):
+        if i == 0:
+            d = _unit(pts[1][0] - p[0], pts[1][1] - p[1])
+        elif i == n - 1:
+            d = _unit(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1])
+        else:
+            d1 = _unit(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1])
+            d2 = _unit(pts[i + 1][0] - p[0], pts[i + 1][1] - p[1])
+            d = _unit(d1[0] + d2[0], d1[1] + d2[1])
+        nx, ny = -d[1], d[0]  # normal "de trás" (para um membro apontando para baixo, aponta para -x)
+        back.append((p[0] + nx * wb[i], p[1] + ny * wb[i]))
+        front.append((p[0] - nx * wf[i], p[1] - ny * wf[i]))
+    return back, front
+
+
+def _limb(ctx, pts, wb, wf, col, a, dark, shade=True):
+    """Membro em uma peça só (sem emendas no joelho/cotovelo), com sombreado no lado de trás."""
+    back, front = _limb_outline(pts, wb, wf)
+
+    def cap(center, p_from, p_to, outward):
+        r = math.hypot(p_to[0] - p_from[0], p_to[1] - p_from[1]) / 2
+        cx, cy = (p_from[0] + p_to[0]) / 2, (p_from[1] + p_to[1]) / 2
+        a0 = math.atan2(p_from[1] - cy, p_from[0] - cx)
+        a1 = math.atan2(p_to[1] - cy, p_to[0] - cx)
+        # escolhe o sentido do arco que passa pelo lado de fora (outward)
+        mid_pos = a0 + ((a1 - a0) % (2 * math.pi)) / 2
+        if math.cos(mid_pos) * outward[0] + math.sin(mid_pos) * outward[1] > 0:
+            ctx.arc(cx, cy, r, a0, a0 + ((a1 - a0) % (2 * math.pi)))
+        else:
+            ctx.arc_negative(cx, cy, r, a0, a0 - ((a0 - a1) % (2 * math.pi)))
+
+    d_end = _unit(pts[-1][0] - pts[-2][0], pts[-1][1] - pts[-2][1])
+    d_start = _unit(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1])
+
+    def path():
+        _cr(ctx, back)
+        cap(pts[-1], back[-1], front[-1], d_end)
+        _cr(ctx, front[::-1], move=False)
+        cap(pts[0], front[0], back[0], d_start)
+        ctx.close_path()
+
+    c = _shade(col) if dark else col
+    path()
+    rgba(ctx, c, a)
+    ctx.fill()
+    if shade:
+        ctx.save()
+        path()
+        ctx.clip()
+        inner = [((b[0] + p[0]) / 2, (b[1] + p[1]) / 2) for b, p in zip(back, pts)]
+        _cr(ctx, back)
+        _cr(ctx, inner[::-1], move=False)
+        ctx.close_path()
+        rgba(ctx, _shade(c, 0.80), a)
+        ctx.fill()
+        ctx.restore()
+    path()
+    rgba(ctx, INK, a)
+    ctx.set_line_width(LINE)
+    ctx.stroke()
+
+
+def _foot_shape(ctx, ankle, toe, col, a, dark, kind):
+    f = _unit(toe[0] - ankle[0], toe[1] - ankle[1])
+    n = (f[1], -f[0])  # perpendicular "para cima" (em direção à canela) quando o pé está no chão
+
+    def P(u, v):
+        return (ankle[0] + f[0] * u + n[0] * v, ankle[1] + f[1] * u + n[1] * v)
+
+    if kind == "boots":
+        pts = [P(-3.5, 6), P(4, 4.5), P(11, 1.5), P(17.5, -1.5), P(18.5, -4.5), P(16, -6.5), P(-4, -6.5),
+               P(-6.5, -4), P(-6, 2)]
+    else:  # pé descalço: calcanhar, arco, peito do pé, dedos
+        pts = [P(-3.2, 5.5), P(2.5, 4.2), P(8.5, 1.8), P(14.5, -0.8), P(17.8, -2.6), P(17.6, -4.6), P(14, -5.4),
+               P(7, -5.0), P(3, -5.6), P(-3.5, -5.6), P(-6.2, -3.6), P(-6.0, 1.0)]
+    c = _shade(col) if dark else col
+    _cr(ctx, pts, closed=True)
+    rgba(ctx, c, a)
+    ctx.fill_preserve()
+    rgba(ctx, INK, a)
+    ctx.set_line_width(LINE)
+    ctx.stroke()
+    if kind == "boots":
+        ctx.move_to(*P(-6.3, -4.6))
+        ctx.line_to(*P(18.2, -4.6))
+        rgba(ctx, INK, a * 0.8)
+        ctx.set_line_width(1.2)
+        ctx.stroke()
+    else:
+        ctx.move_to(*P(14.2, -1.0))
+        ctx.curve_to(*P(14.8, -2.2), *P(14.8, -3.6), *P(14.2, -5.0))
+        rgba(ctx, INK, a * 0.5)
+        ctx.set_line_width(1.0)
+        ctx.stroke()
+
+
+def _hand_shape(ctx, wrist, hand, col, a, dark, front_sign):
+    f = _unit(hand[0] - wrist[0], hand[1] - wrist[1])
+    n = (-f[1] * front_sign, f[0] * front_sign)
+
+    def P(u, v):
+        return (wrist[0] + f[0] * u + n[0] * v, wrist[1] + f[1] * u + n[1] * v)
+
+    pts = [P(-1.5, -2.9), P(5, -3.8), P(10, -2.6), P(11.5, 0), P(10, 2.6), P(6, 3.4), P(4.5, 5.6), P(2.4, 5.2),
+           P(1.5, 3.0), P(-1.5, 2.8)]
+    c = _shade(col) if dark else col
+    _cr(ctx, pts, closed=True)
+    rgba(ctx, c, a)
+    ctx.fill_preserve()
+    rgba(ctx, INK, a)
+    ctx.set_line_width(LINE * 0.85)
+    ctx.stroke()
+
+
+def _torso_shape(ctx, T, female):
+    """Tronco de perfil (x = frente, y para cima negativo), do quadril ao ombro."""
+    if female:
+        pts = [(-8.0, 9), (-10.0, 2), (-10.5, -T * 0.18), (-8.5, -T * 0.45), (-9.5, -T * 0.75), (-7.5, -T + 1), (-2, -T - 3.5),
+               (5, -T - 1.5), (8.5, -T * 0.82), (12.5, -T * 0.66), (10.5, -T * 0.55), (7.5, -T * 0.40),
+               (9.5, -T * 0.12), (9.5, 2), (7.0, 9), (0, 11)]
+    else:
+        pts = [(-9.5, 5), (-10.5, -T * 0.25), (-10.5, -T * 0.6), (-9.5, -T * 0.88), (-5, -T - 3), (3, -T - 3),
+               (9, -T * 0.86), (11, -T * 0.62), (10, -T * 0.32), (9.5, 5)]
+    _cr(ctx, pts, closed=True)
+
+
+def _head_shape(ctx, R):
+    pts = [(-R * 1.0, R * 0.05), (-R * 0.82, -R * 0.62), (-R * 0.15, -R * 1.0), (R * 0.55, -R * 0.82),
+           (R * 0.86, -R * 0.38), (R * 0.90, -R * 0.12), (R * 1.20, R * 0.20), (R * 0.98, R * 0.33),
+           (R * 1.00, R * 0.52), (R * 0.90, R * 0.66), (R * 0.88, R * 0.86), (R * 0.45, R * 1.00),
+           (R * 0.05, R * 0.80), (-R * 0.45, R * 0.70), (-R * 0.85, R * 0.48)]
+    _cr(ctx, pts, closed=True)
+
+
+def _hair(ctx, R, o, a, t):
+    col = o["hair"]
+    female = o.get("long_hair")
+    if female:
+        pts = [(R * 0.78, -R * 0.52), (R * 0.45, -R * 0.98), (-R * 0.30, -R * 1.12), (-R * 1.02, -R * 0.62),
+               (-R * 1.10, R * 0.10), (-R * 0.80, R * 0.45), (-R * 0.42, R * 0.18), (-R * 0.10, -R * 0.12),
+               (R * 0.35, -R * 0.42)]
+    else:
+        pts = [(R * 0.80, -R * 0.50), (R * 0.55, -R * 0.98), (-R * 0.20, -R * 1.14), (-R * 0.95, -R * 0.72),
+               (-R * 1.06, -R * 0.05), (-R * 0.82, R * 0.40), (-R * 0.52, R * 0.20), (-R * 0.30, -R * 0.20),
+               (R * 0.10, -R * 0.42), (R * 0.45, -R * 0.50)]
+    _cr(ctx, pts, closed=True)
+    rgba(ctx, col, a)
+    ctx.fill_preserve()
+    rgba(ctx, INK, a)
+    ctx.set_line_width(LINE * 0.9)
+    ctx.stroke()
+    # mechas
+    for k in range(3):
+        ctx.move_to(R * (0.40 - k * 0.38), -R * (0.92 - k * 0.04))
+        ctx.curve_to(R * (0.20 - k * 0.38), -R * 0.70, R * (0.05 - k * 0.38), -R * 0.55, R * (-0.10 - k * 0.38),
+                     -R * (0.45 - k * 0.12))
+        rgba(ctx, _shade(col, 0.6), a * 0.8)
+        ctx.set_line_width(1.0)
+        ctx.stroke()
+    if female:
+        sw = 1.6 * math.sin((t or 0) * 3.0)
+        pony = [(-R * 0.85, -R * 0.55), (-R * 1.55, -R * 0.35), (-R * 1.70 + sw, R * 0.55), (-R * 1.35 + sw, R * 1.75),
+                (-R * 1.05 + sw, R * 1.30), (-R * 1.05, R * 0.35), (-R * 0.90, -R * 0.20)]
+        _cr(ctx, pony, closed=True)
+        rgba(ctx, col, a)
+        ctx.fill_preserve()
+        rgba(ctx, INK, a)
+        ctx.set_line_width(LINE * 0.9)
+        ctx.stroke()
+        ctx.new_sub_path()
+        ctx.arc(-R * 0.95, -R * 0.42, 2.0, 0, 2 * math.pi)
+        rgba(ctx, (0.85, 0.30, 0.35), a)
+        ctx.fill()
+
+
 def figure(ctx, x, y, s, p, outfit="swimmer", facing=1, a=1.0, ground=True, shadow=True, t=0.0, prop=None):
     """Desenha o personagem. (x, y) = ponto no chão (ground=True) ou quadril (ground=False)."""
     o = OUTFITS[outfit]
+    female = bool(o.get("long_hair"))
     J = _joints(p)
     rot = p.get("rot", 0.0)
-    # todos os pontos, girados pela rotação global
     pts = [J["hip"], J["shoulder"], J["neck"], J["head"]]
     for side in ("F", "B"):
         pts += list(J["legs"][side]) + list(J["arms"][side])
-    R = lambda q: _rot(q, rot)  # noqa: E731
-    lowest = max(R(q)[1] for q in pts) + (HEAD_R if abs(rot) > 45 else 2)
+    R_ = lambda q: _rot(q, rot)  # noqa: E731
+    lowest = max(R_(q)[1] for q in pts) + (HEAD_R if abs(rot) > 45 else 2)
     if abs(rot) > 45:
-        lowest = max(lowest, max(R(q)[1] for q in pts) + 7)
+        lowest = max(lowest, max(R_(q)[1] for q in pts) + 7)
     oy = -lowest if ground else 0.0
 
     ctx.save()
     ctx.translate(x, y)
     ctx.scale(s * facing, s)
     if ground and shadow:
-        xs = [R(q)[0] for q in pts]
+        xs = [R_(q)[0] for q in pts]
         cx, w = (min(xs) + max(xs)) / 2, (max(xs) - min(xs)) / 2 + 12
         ctx.save()
         ctx.translate(cx, 1)
@@ -265,11 +469,18 @@ def figure(ctx, x, y, s, p, outfit="swimmer", facing=1, a=1.0, ground=True, shad
         ctx.fill()
     ctx.translate(0, oy)
     ctx.rotate(math.radians(rot))
+    lean = J["lean"]
+    hipw = 1.08 if female else 1.0
 
     def leg(side, dark):
         knee, ankle, toe = J["legs"][side]
-        _chain(ctx, [J["hip"], knee, ankle], [11.5, 8.5, 6.5], [o["leg"], o["leg"]], a, dark)
-        # pé / nadadeira
+        hip = J["hip"]
+        thigh_mid = ((hip[0] * 0.5 + knee[0] * 0.5), (hip[1] * 0.5 + knee[1] * 0.5))
+        calf = (knee[0] + (ankle[0] - knee[0]) * 0.30, knee[1] + (ankle[1] - knee[1]) * 0.30)
+        chain = [hip, thigh_mid, knee, calf, ankle]
+        # meia-largura atrás / frente: coxa cheia, joelho estreito, panturrilha saliente atrás, tornozelo fino
+        wb = [7.0 * hipw, 6.0 * hipw, 4.4, 5.6, 2.8]
+        wf = [6.0 * hipw, 5.4 * hipw, 4.6, 4.0, 3.0]
         if o["feet"] == "fins":
             fx, fy = toe[0] - ankle[0], toe[1] - ankle[1]
             tip = (ankle[0] + fx * 2.4, ankle[1] + fy * 2.4)
@@ -281,47 +492,41 @@ def figure(ctx, x, y, s, p, outfit="swimmer", facing=1, a=1.0, ground=True, shad
             rgba(ctx, _shade(o["foot"]) if dark else o["foot"], a)
             ctx.fill_preserve()
             rgba(ctx, INK, a)
-            ctx.set_line_width(1.8)
+            ctx.set_line_width(LINE)
             ctx.stroke()
-        else:
-            _chain(ctx, [ankle, toe], [7, 5.5 if o["feet"] == "bare" else 7], [o["foot"]], a, dark)
+        _limb(ctx, chain, wb, wf, o["leg"], a, dark)
+        if o["feet"] != "fins":
+            _foot_shape(ctx, ankle, toe, o["foot"], a, dark, o["feet"])
         if o["shorts"]:
-            _taper(ctx, J["hip"], _add(J["hip"], p["thigh" + side], THIGH * 0.42), 15, 13)
-            rgba(ctx, _shade(o["shorts"]) if dark else o["shorts"], a)
-            ctx.fill_preserve()
-            rgba(ctx, INK, a)
-            ctx.set_line_width(1.6)
-            ctx.stroke()
+            ln = o.get("shorts_len", 0.45)
+            end = (hip[0] + (knee[0] - hip[0]) * ln, hip[1] + (knee[1] - hip[1]) * ln)
+            mid = ((hip[0] + end[0]) / 2, (hip[1] + end[1]) / 2)
+            k = 1.18
+            _limb(ctx, [hip, mid, end], [wb[0] * k, wb[0] * k * 0.98, wb[1] * k], [wf[0] * k, wf[0] * k, wf[1] * k],
+                  o["shorts"], a, dark)
 
     def arm(side, dark):
         elbow, wrist, hand = J["arms"][side]
         sh = J["shoulder"]
-        _chain(ctx, [sh, elbow, wrist], [9, 7, 6], [o["arm"], o["arm"] if o["arm"] != SKIN else SKIN], a, dark)
-        if o["top"] != o["arm"] and o["arm"] == SKIN:
-            _taper(ctx, sh, _add(sh, p["arm" + side], UPPER * 0.45), 10.5, 9.5)
-            rgba(ctx, _shade(o["top"]) if dark else o["top"], a)
-            ctx.fill_preserve()
-            rgba(ctx, INK, a)
-            ctx.set_line_width(1.5)
-            ctx.stroke()
+        bic = (sh[0] + (elbow[0] - sh[0]) * 0.45, sh[1] + (elbow[1] - sh[1]) * 0.45)
+        fore = (elbow[0] + (wrist[0] - elbow[0]) * 0.35, elbow[1] + (wrist[1] - elbow[1]) * 0.35)
+        g = 0.88 if female else 1.0
+        chain = [sh, bic, elbow, fore, wrist]
+        wb = [5.0 * g, 4.4 * g, 3.4 * g, 3.8 * g, 2.7 * g]
+        wf = [4.6 * g, 4.6 * g, 3.4 * g, 3.5 * g, 2.7 * g]
+        _limb(ctx, chain, wb, wf, o["arm"], a, dark)
+        _hand_shape(ctx, wrist, hand, o["hand"], a, dark, 1)
+        if o["top"] != o["arm"] and o["arm"] == SKIN and not female:
+            end = (sh[0] + (elbow[0] - sh[0]) * 0.48, sh[1] + (elbow[1] - sh[1]) * 0.48)
+            mid = ((sh[0] + end[0]) / 2, (sh[1] + end[1]) / 2)
+            _limb(ctx, [sh, mid, end], [6.0, 5.8, 5.6], [5.6, 5.8, 5.8], o["top"], a, dark)
         if o["band"]:
-            m = _add(sh, p["arm" + side], UPPER * 0.55)
-            _taper(ctx, _add(sh, p["arm" + side], UPPER * 0.42), m, 9.2, 8.8)
-            rgba(ctx, _shade(o["band"]) if dark else o["band"], a)
-            ctx.fill()
-        ctx.new_sub_path()
-        ctx.arc(hand[0], hand[1], 4.6, 0, 2 * math.pi)
-        rgba(ctx, INK, a)
-        ctx.fill()
-        ctx.new_sub_path()
-        ctx.arc(hand[0], hand[1], 3.2, 0, 2 * math.pi)
-        rgba(ctx, _shade(o["hand"]) if dark else o["hand"], a)
-        ctx.fill()
+            m0 = (sh[0] + (elbow[0] - sh[0]) * 0.42, sh[1] + (elbow[1] - sh[1]) * 0.42)
+            m1 = (sh[0] + (elbow[0] - sh[0]) * 0.55, sh[1] + (elbow[1] - sh[1]) * 0.55)
+            _limb(ctx, [m0, m1], [4.8, 4.6], [4.8, 4.6], o["band"], a, dark, shade=False)
 
     arm("B", True)
     leg("B", True)
-    # cilindro de mergulho nas costas
-    lean = J["lean"]
     if o["tank"]:
         ctx.save()
         c = _add(J["hip"], 180 - lean, TORSO * 0.62)
@@ -338,23 +543,63 @@ def figure(ctx, x, y, s, p, outfit="swimmer", facing=1, a=1.0, ground=True, shad
         rgba(ctx, o["tank"], a)
         ctx.fill_preserve()
         rgba(ctx, INK, a)
-        ctx.set_line_width(1.8)
+        ctx.set_line_width(LINE)
         ctx.stroke()
         ctx.restore()
+    leg("F", False)
+    # pescoço
+    h = J["head"]
+    nb = J["neck"]
+    neck_col = o["hood"] or SKIN
+    ctx.save()
+    ctx.translate(*h)
+    ctx.rotate(math.radians(lean + p["neck"]))
+    _limb(ctx, [(-1.5, HEAD_R * 0.5), (-1.0, HEAD_R + NECK + 4)], [3.6, 4.2], [3.4, 4.0], neck_col, a, False, False)
+    ctx.restore()
     # tronco
     ctx.save()
     ctx.translate(*J["hip"])
     ctx.rotate(math.radians(lean))
     T = TORSO
-    ctx.move_to(-9, 4)
-    ctx.curve_to(-12, -T * 0.35, -11, -T * 0.75, -8, -T + 2)
-    ctx.curve_to(-4, -T - 4, 5, -T - 4, 8, -T + 3)
-    ctx.curve_to(12, -T * 0.7, 11, -T * 0.35, 9, 4)
-    ctx.close_path()
+    _torso_shape(ctx, T, female)
     rgba(ctx, o["top"], a)
-    ctx.fill_preserve()
+    ctx.fill()
+    ctx.save()
+    _torso_shape(ctx, T, female)
+    ctx.clip()
+    ctx.rectangle(-16, -T - 8, 9, T + 16)  # sombra nas costas
+    rgba(ctx, _shade(o["top"], 0.80), a)
+    ctx.fill()
+    if female and o["arm"] == SKIN:  # maiô: alça e decote, ombro de pele
+        ctx.move_to(-11, -T * 0.80)
+        ctx.curve_to(-6, -T * 0.86, 2, -T * 0.86, 13, -T * 0.72)
+        ctx.line_to(13, -T - 10)
+        ctx.line_to(-11, -T - 10)
+        ctx.close_path()
+        rgba(ctx, SKIN, a)
+        ctx.fill()
+        ctx.move_to(-11, -T * 0.80)
+        ctx.curve_to(-6, -T * 0.86, 2, -T * 0.86, 13, -T * 0.72)
+        rgba(ctx, INK, a)
+        ctx.set_line_width(LINE * 0.8)
+        ctx.stroke()
+    elif not female and o["shorts"] and o["top"] != o["shorts"]:
+        # barra da camiseta
+        ctx.move_to(-12, -T * 0.06)
+        ctx.curve_to(-4, -T * 0.02, 4, -T * 0.02, 12, -T * 0.08)
+        rgba(ctx, INK, a * 0.6)
+        ctx.set_line_width(1.1)
+        ctx.stroke()
+        # gola
+        ctx.move_to(-3, -T - 2)
+        ctx.curve_to(0, -T + 2.5, 4, -T + 2, 6, -T - 1)
+        rgba(ctx, INK, a * 0.6)
+        ctx.set_line_width(1.1)
+        ctx.stroke()
+    ctx.restore()
+    _torso_shape(ctx, T, female)
     rgba(ctx, INK, a)
-    ctx.set_line_width(1.8)
+    ctx.set_line_width(LINE)
     ctx.stroke()
     if o["tank"]:
         ctx.move_to(-8, -T + 6)
@@ -363,64 +608,63 @@ def figure(ctx, x, y, s, p, outfit="swimmer", facing=1, a=1.0, ground=True, shad
         ctx.set_line_width(2.4)
         ctx.stroke()
     ctx.restore()
-    leg("F", False)
     # cabeça
-    h = J["head"]
     ctx.save()
     ctx.translate(*h)
     ctx.rotate(math.radians(lean + p["neck"]))
-    _chain(ctx, [(0, HEAD_R - 2), (0, HEAD_R + NECK)], [6, 6.5], [o["hood"] or SKIN], a)
-    ctx.new_sub_path()
-    ctx.save()
-    ctx.scale(0.92, 1.05)
-    ctx.arc(0, 0, HEAD_R, 0, 2 * math.pi)
-    ctx.restore()
-    rgba(ctx, o["hood"] or SKIN, a)
-    ctx.fill_preserve()
-    rgba(ctx, INK, a)
-    ctx.set_line_width(1.8)
-    ctx.stroke()
-    if not o["hood"]:
-        # nariz
-        ctx.move_to(HEAD_R * 0.85, -2)
-        ctx.line_to(HEAD_R * 1.12, 2.5)
-        ctx.line_to(HEAD_R * 0.85, 4)
+    R = HEAD_R
+    if o["hood"]:
+        ctx.new_sub_path()
+        ctx.save()
+        ctx.scale(0.92, 1.05)
+        ctx.arc(0, 0, R, 0, 2 * math.pi)
+        ctx.restore()
+        rgba(ctx, o["hood"], a)
+        ctx.fill_preserve()
+        rgba(ctx, INK, a)
+        ctx.set_line_width(LINE)
+        ctx.stroke()
+    else:
+        _head_shape(ctx, R)
         rgba(ctx, SKIN, a)
         ctx.fill_preserve()
         rgba(ctx, INK, a)
-        ctx.set_line_width(1.4)
+        ctx.set_line_width(LINE)
         ctx.stroke()
-        # cabelo
-        if o["hair"]:
-            ctx.new_sub_path()
-            ctx.arc(-1, -1, HEAD_R + 0.5, math.pi * 0.95, math.pi * 1.92)
-            ctx.line_to(-2, -2)
-            ctx.close_path()
-            rgba(ctx, o["hair"], a)
-            ctx.fill()
-            if o.get("long_hair"):
-                # rabo de cavalo caindo atrás da cabeça, até o ombro, com balanço leve
-                sw = 1.5 * math.sin(t * 3.0) if t is not None else 0
-                ctx.move_to(-HEAD_R * 0.70, -HEAD_R * 0.55)
-                ctx.curve_to(-HEAD_R * 1.55, -HEAD_R * 0.40, -HEAD_R * 1.50 + sw, HEAD_R * 0.90,
-                             -HEAD_R * 1.05 + sw, HEAD_R * 1.85)
-                ctx.curve_to(-HEAD_R * 0.80 + sw, HEAD_R * 1.20, -HEAD_R * 0.90, HEAD_R * 0.20, -HEAD_R * 0.55,
-                             -HEAD_R * 0.15)
-                ctx.close_path()
-                rgba(ctx, o["hair"], a)
-                ctx.fill_preserve()
-                rgba(ctx, INK, a)
-                ctx.set_line_width(1.2)
-                ctx.stroke()
-                circle_ = (-HEAD_R * 0.78, -HEAD_R * 0.45)
-                ctx.new_sub_path()
-                ctx.arc(circle_[0], circle_[1], 1.6, 0, 2 * math.pi)
-                rgba(ctx, (0.85, 0.30, 0.35), a)
-                ctx.fill()
+        # orelha
         ctx.new_sub_path()
-        ctx.arc(HEAD_R * 0.42, -2.5, 1.2, 0, 2 * math.pi)
+        ctx.save()
+        ctx.translate(-R * 0.18, R * 0.12)
+        ctx.scale(0.75, 1.0)
+        ctx.arc(0, 0, R * 0.24, 0, 2 * math.pi)
+        ctx.restore()
+        rgba(ctx, _shade(SKIN, 0.92), a)
+        ctx.fill_preserve()
+        rgba(ctx, INK, a)
+        ctx.set_line_width(1.1)
+        ctx.stroke()
+        # olho, sobrancelha, boca
+        ctx.new_sub_path()
+        ctx.arc(R * 0.52, -R * 0.10, 1.35, 0, 2 * math.pi)
         rgba(ctx, INK, a)
         ctx.fill()
+        if female:
+            ctx.move_to(R * 0.52, -R * 0.10)
+            ctx.line_to(R * 0.70, -R * 0.20)
+            ctx.set_line_width(0.9)
+            ctx.stroke()
+        ctx.move_to(R * 0.36, -R * 0.34)
+        ctx.curve_to(R * 0.48, -R * 0.42, R * 0.62, -R * 0.40, R * 0.72, -R * 0.33)
+        rgba(ctx, o["hair"] or INK, a)
+        ctx.set_line_width(1.5)
+        ctx.stroke()
+        ctx.move_to(R * 0.98, R * 0.53)
+        ctx.line_to(R * 0.78, R * 0.56)
+        rgba(ctx, INK, a * 0.8)
+        ctx.set_line_width(1.0)
+        ctx.stroke()
+        if o["hair"]:
+            _hair(ctx, R, o, a, t)
     if o["mask"]:
         ctx.new_sub_path()
         x0, y0, w, hh, r = 3, -8, 11, 9, 3
@@ -436,7 +680,7 @@ def figure(ctx, x, y, s, p, outfit="swimmer", facing=1, a=1.0, ground=True, shad
         ctx.stroke()
         ctx.move_to(8, 4)
         ctx.line_to(14, 7)
-        rgba(ctx, (0.08, 0.08, 0.08), a)
+        rgba(ctx, (0.08, 0.08, 0.09), a)
         ctx.set_line_width(3)
         ctx.stroke()
     ctx.restore()
