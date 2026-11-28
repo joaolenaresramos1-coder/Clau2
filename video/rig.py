@@ -27,6 +27,10 @@ OUTFITS = {
                     hood=None, mask=False, tank=None, band=None, shorts=(0.16, 0.22, 0.34), hand=SKIN),
     "friend": dict(top=(0.82, 0.30, 0.26), arm=SKIN, leg=SKIN, foot=SKIN, feet="bare", hair=(0.12, 0.10, 0.09),
                    hood=None, mask=False, tank=None, band=None, shorts=(0.20, 0.24, 0.30), hand=SKIN),
+    "snorkel": dict(top=(0.20, 0.42, 0.62), arm=SKIN, leg=SKIN, foot=SKIN, feet="bare", hair=(0.30, 0.20, 0.14),
+                    hood=None, mask=True, tank=None, band=None, shorts=(0.16, 0.22, 0.34), hand=SKIN, snorkel=True),
+    "snorkel2": dict(top=(0.85, 0.55, 0.20), arm=SKIN, leg=SKIN, foot=SKIN, feet="bare", hair=(0.12, 0.10, 0.09),
+                     hood=None, mask=True, tank=None, band=None, shorts=(0.30, 0.30, 0.32), hand=SKIN, snorkel=True),
     # amiga: cabelo comprido preso em rabo de cavalo, maiô
     "amiga": dict(top=(0.80, 0.34, 0.42), arm=SKIN, leg=SKIN, foot=SKIN, feet="bare", hair=(0.24, 0.14, 0.09),
                   hood=None, mask=False, tank=None, band=None, shorts=None, hand=SKIN, long_hair=True),
@@ -678,11 +682,25 @@ def figure(ctx, x, y, s, p, outfit="swimmer", facing=1, a=1.0, ground=True, shad
         rgba(ctx, INK, a)
         ctx.set_line_width(1.5)
         ctx.stroke()
-        ctx.move_to(8, 4)
-        ctx.line_to(14, 7)
-        rgba(ctx, (0.08, 0.08, 0.09), a)
-        ctx.set_line_width(3)
-        ctx.stroke()
+        if o.get("snorkel"):  # tubo do snorkel: da boca, por trás da cabeça, para cima
+            ctx.move_to(R * 0.95, R * 0.55)
+            ctx.curve_to(R * 0.3, R * 0.9, -R * 0.4, R * 0.5, -R * 0.55, -R * 0.2)
+            ctx.line_to(-R * 0.55, -R * 1.9)
+            rgba(ctx, INK, a)
+            ctx.set_line_width(4.4)
+            ctx.stroke()
+            ctx.move_to(R * 0.95, R * 0.55)
+            ctx.curve_to(R * 0.3, R * 0.9, -R * 0.4, R * 0.5, -R * 0.55, -R * 0.2)
+            ctx.line_to(-R * 0.55, -R * 1.9)
+            rgba(ctx, (0.95, 0.60, 0.15), a)
+            ctx.set_line_width(2.6)
+            ctx.stroke()
+        else:
+            ctx.move_to(8, 4)
+            ctx.line_to(14, 7)
+            rgba(ctx, (0.08, 0.08, 0.09), a)
+            ctx.set_line_width(3)
+            ctx.stroke()
     ctx.restore()
     arm("F", False)
     if prop:
