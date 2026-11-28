@@ -23,6 +23,22 @@ from motion import Path  # noqa: E402
 from mapdata import draw_world, world_proj  # noqa: E402
 
 SNAIL_C = (0.93, 0.62, 0.30)
+
+_mcallout = mcallout
+
+
+def mcallout(ctx, key, tx, ty, s, k, size=16):  # noqa: F811
+    """Marcação ancorada que nunca sai da tela: se o texto passar da borda, ele é puxado para dentro."""
+    if k <= 0 or key not in ANCH:
+        return
+    w = measure(ctx, s, size, "bold", 0.5)
+    px = ctx.device_to_user(*ANCH[key][:2])[0]
+    if tx >= px:
+        tx = min(tx, W - 24 - w - 8)
+        tx = max(tx, px + 10)
+    else:
+        tx = max(tx, 24 + w + 8)
+    _mcallout(ctx, key, tx, ty, s, k, size)
 WAIST = FLOOR - 112  # água na cintura
 
 
@@ -1262,7 +1278,11 @@ def w_call(ctx, t):
     x = W * 0.36
     rig.figure(ctx, x, H * 0.82, 2.0, rig.p_lie(t), outfit="snorkel2", t=t)
     p = rig.blend(rig.p_kneel(t), rig.p_phone(t), 1 - appear(t, 491, 1))
-    rig.figure(ctx, W * 0.66, H * 0.82, 2.0, p, outfit="snorkel", facing=-1, t=t)
+    def phone(c, hx, hy):
+        rrect(c, hx - 3, hy - 9, 7, 14, 2)
+        ink(c, (0.12, 0.13, 0.15), 1 - appear(t, 491, 0.6), 1.2)
+
+    rig.figure(ctx, W * 0.66, H * 0.82, 2.0, p, outfit="snorkel", facing=-1, t=t, prop=phone)
     if t < 491:
         hp = rig.hand_point(W * 0.66, H * 0.82, 2.0, p, -1)
         mark(ctx, "fone", *hp, 18)
